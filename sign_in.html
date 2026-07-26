@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>NexTalk - AsirNet Chat</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:'Poppins',sans-serif;
+}
+
+body{
+    height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    overflow:hidden;
+    background:
+    radial-gradient(circle at top left,#0f172a,#020617 60%);
+    position:relative;
+}
+
+body::before,
+body::after{
+    content:'';
+    position:absolute;
+    width:450px;
+    height:450px;
+    border-radius:50%;
+    filter:blur(90px);
+    animation:float 8s ease-in-out infinite;
+}
+
+body::before{
+    background:#00f7ff;
+    top:-150px;
+    left:-120px;
+}
+
+body::after{
+    background:#7c3aed;
+    bottom:-150px;
+    right:-120px;
+    animation-delay:4s;
+}
+
+@keyframes float{
+    0%,100%{
+        transform:translateY(0px);
+    }
+    50%{
+        transform:translateY(30px);
+    }
+}
+
+.login-box{
+    width:380px;
+    padding:35px 30px;
+    border-radius:28px;
+    background:rgba(255,255,255,0.06);
+    backdrop-filter:blur(18px);
+    border:1px solid rgba(255,255,255,0.1);
+    box-shadow:
+    0 0 40px rgba(0,0,0,0.4),
+    inset 0 0 20px rgba(255,255,255,0.03);
+    position:relative;
+    z-index:10;
+    overflow:hidden;
+    animation:cardShow 1s ease;
+}
+
+@keyframes cardShow{
+    from{
+        opacity:0;
+        transform:translateY(40px) scale(.95);
+    }
+    to{
+        opacity:1;
+        transform:translateY(0px) scale(1);
+    }
+}
+
+.login-box::before{
+    content:'';
+    position:absolute;
+    width:180px;
+    height:180px;
+    background:linear-gradient(45deg,#00f7ff,#7c3aed);
+    border-radius:50%;
+    top:-90px;
+    right:-90px;
+    opacity:.25;
+}
+
+.logo{
+    color:#fff;
+    text-align:center;
+    margin-bottom:25px;
+    padding: 15px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 18px;
+    border: 1px solid rgba(255,255,255,0.08);
+}
+
+.logo img{
+    width: 180px;
+    border-radius: 15px;
+}
+
+.logo h2 {
+    font-size: 22px;
+    font-weight: 700;
+    margin-top: 5px;
+    background: linear-gradient(135deg, #00f7ff, #7c3aed);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.logo p{
+    margin-top:2px;
+    color: #94a3b8;
+    font-size:12px;
+}
+
+.input-group{
+    position:relative;
+    margin-bottom:20px;
+}
+
+.input-group input{
+    width:100%;
+    padding:14px 16px;
+    background:rgba(255,255,255,0.05);
+    border:1px solid rgba(255,255,255,0.08);
+    outline:none;
+    border-radius:14px;
+    color:#fff;
+    font-size:14px;
+    transition:.35s ease;
+}
+
+.input-group input:focus{
+    border-color:#00f7ff;
+    box-shadow:
+    0 0 15px rgba(0,247,255,.35);
+    transform:translateY(-2px);
+}
+
+.input-group label{
+    position:absolute;
+    left:16px;
+    top:50%;
+    transform:translateY(-50%);
+    color:#94a3b8;
+    pointer-events:none;
+    transition:.3s;
+    background:transparent;
+}
+
+.input-group input:focus + label,
+.input-group input:valid + label{
+    top:-10px;
+    left:12px;
+    font-size:11px;
+    padding:0 6px;
+    color:#00f7ff;
+    background:#0f172a;
+    border-radius:6px;
+}
+
+.login-btn{
+    width:100%;
+    padding:14px;
+    border:none;
+    border-radius:14px;
+    background:linear-gradient(135deg,#00f7ff,#7c3aed);
+    color:#fff;
+    font-size:15px;
+    font-weight:600;
+    cursor:pointer;
+    transition:.35s ease;
+    position:relative;
+    overflow:hidden;
+}
+
+.login-btn::before{
+    content:'';
+    position:absolute;
+    top:0;
+    left:-100%;
+    width:100%;
+    height:100%;
+    background:rgba(255,255,255,0.2);
+    transform:skewX(-25deg);
+    transition:.6s;
+}
+
+.login-btn:hover::before{
+    left:120%;
+}
+
+.login-btn:hover{
+    transform:translateY(-3px) scale(1.02);
+    box-shadow:
+    0 12px 25px rgba(124,58,237,.4),
+    0 0 20px rgba(0,247,255,.35);
+}
+
+.login-btn:active{
+    transform:scale(.98);
+}
+
+.divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    color: #64748b;
+    font-size: 12px;
+    margin: 18px 0;
+}
+
+.divider::before,
+.divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.divider:not(:empty)::before {
+    margin-right: .75em;
+}
+
+.divider:not(:empty)::after {
+    margin-left: .75em;
+}
+
+.asirnet-btn {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid rgba(0, 247, 255, 0.3);
+    border-radius: 14px;
+    background: rgba(0, 247, 255, 0.08);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: 0.3s ease;
+}
+
+.asirnet-btn:hover {
+    background: rgba(0, 247, 255, 0.18);
+    border-color: #00f7ff;
+    transform: translateY(-2px);
+    box-shadow: 0 0 15px rgba(0, 247, 255, 0.25);
+}
+
+section {
+    padding-top: 15px;
+    display: flex;
+    justify-content: space-between;
+}
+
+section button {
+    background: none;
+    border: none;
+    color: #ff4d4d;
+    font-size: 13px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+section a button {
+    color: #00f7ff;
+}
+
+section button:hover {
+    opacity: 0.8;
+}
+
+.bottom-text{
+    text-align:center;
+    margin-top:20px;
+    color:#94a3b8;
+    font-size:12px;
+}
+
+.bottom-text span{
+    color:#00f7ff;
+}
+
+.status-msg {
+    color: #00f7ff;
+    font-size: 13px;
+    text-align: center;
+    margin-bottom: 15px;
+    padding: 10px;
+    background: rgba(0, 247, 255, 0.1);
+    border: 1px solid rgba(0, 247, 255, 0.2);
+    border-radius: 12px;
+}
+
+.hidden {
+    display: none !important;
+}
+
+@media(max-width:450px){
+    .login-box{
+        width:92%;
+        padding:30px 20px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="login-box">
+
+    <div class="logo">
+        <h2>NexTalk</h2>
+        <p>AsirNet Real-Time Messenger</p>
+    </div>
+
+    <div id="statusMsg" class="status-msg hidden">
+        Authenticating via AsirNet SSO...
+    </div>
+
+    <form id="asirnetLoginForm">
+
+        <div class="input-group">
+            <input type="email" id="loginEmail" required>
+            <label>Email</label>
+        </div>
+
+        <div class="input-group">
+            <input type="password" id="loginPassword" required>
+            <label>Passkey</label>
+        </div>
+
+      <button type="submit" class="login-btn">
+            Login
+        </button>
+
+    </form>
+
+    <div id="orDivider" class="divider">OR</div>
+
+    <button type="button" id="asirnetBtn" class="asirnet-btn" onclick="continueWithAsirNet()">
+        Continue with AsirNet
+    </button>
+
+    <section id="linksSection">
+        <button type="button" onclick="forgot()">Forgot password?</button>
+        <a href="register.html"><button type="button">Create account</button></a>
+    </section>
+
+    <div class="bottom-text">
+        Powered by <span>NexTalk & AsirNet Core</span>
+    </div>
+
+</div>
+
+<script>
+// CONFIGURATION
+const NEXTALK_SERVER_URL = "https://nextalk-user-server.onrender.com/"; 
+const ASIRNET_SSO_PAGE_URL = "http://localhost:8080/Browser%20AsirNet/varification.html"; // Production এ আসল URL দিন
+
+const form = document.getElementById("asirnetLoginForm");
+const loginBtn = document.querySelector(".login-btn");
+const statusMsg = document.getElementById("statusMsg");
+const orDivider = document.getElementById("orDivider");
+const linksSection = document.getElementById("linksSection");
+const asirnetBtn = document.getElementById("asirnetBtn");
+
+window.addEventListener("DOMContentLoaded", async () => {
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    const ssoToken = urlParams.get("sso_token");
+
+    if (ssoToken) {
+      if (form) form.classList.add("hidden");
+      if (orDivider) orDivider.classList.add("hidden");
+      if (linksSection) linksSection.classList.add("hidden");
+
+      statusMsg.classList.remove("hidden");
+      statusMsg.innerText = "Authenticating with AsirNet SSO...";
+
+      if (asirnetBtn) {
+        asirnetBtn.disabled = true;
+        asirnetBtn.innerText = "Authenticating...";
+      }
+
+      // ১. URL ট্রিম করা হচ্ছে যাতে ডাবল স্ল্যাশ না হয়
+      const cleanServerUrl = NEXTALK_SERVER_URL.replace(/\/+$/, "");
+
+      const res = await fetch(`${cleanServerUrl}/sso-login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: ssoToken })
+      });
+
+      // ২. HTML Error নাকি JSON তা নিরাপদভাবে চেক করা
+      let data = {};
+      const contentType = res.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        data = await res.json();
+      }
+
+      if (res.ok) {
+        statusMsg.innerText = "SSO Success ✓ Redirecting...";
+        if (asirnetBtn) asirnetBtn.innerText = "Redirecting...";
+
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("loginMethod", "asirnet_sso");
+
+        const user = {
+          id: data.user.id,
+          username: data.user.username,
+          email: data.user.email,
+          bio: data.user.bio || "",
+          avatar: data.user.avatar || "",
+          cover_photo: data.user.cover_photo || ""
+        };
+
+
+        localStorage.setItem("userNex", JSON.stringify(user));
+
+        // SSO সফল হলে URL থেকে টোকেনটি মুছে ফেলা
+        window.history.replaceState({}, document.title, window.location.pathname);
+
+        setTimeout(() => {
+     window.location.href = "nextalk.html";
+        }, 800);
+
+      } else {
+        throw new Error(data.message || `Server responded with status ${res.status}`);
+      }
+    }
+  } catch (err) {
+    console.error("SSO Token Verification Error:", err);
+    
+    statusMsg.classList.remove("hidden");
+    statusMsg.style.color = "#ff4d4d";
+    statusMsg.style.borderColor = "rgba(255, 77, 77, 0.3)";
+    statusMsg.style.background = "rgba(255, 77, 77, 0.1)";
+    statusMsg.innerText = err.message || "Server Connection Error / Server Sleeping";
+
+    if (form) form.classList.remove("hidden");
+    if (orDivider) orDivider.classList.remove("hidden");
+    if (linksSection) linksSection.classList.remove("hidden");
+    if (asirnetBtn) {
+      asirnetBtn.disabled = false;
+      asirnetBtn.innerText = "Continue with AsirNet";
+    }
+  }
+});
+
+
+
+form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const email = document.getElementById("loginEmail").value.trim();
+    const password = document.getElementById("loginPassword").value.trim();
+
+    if (!email || !password) {
+        alert("Please fill all fields");
+        return;
+    }
+
+    loginBtn.disabled = true;
+    loginBtn.innerText = "Authenticating NexTalk...";
+
+try {
+    console.log(password);
+  // ১. URL ট্রিম করে ডাবল স্ল্যাশ রিমুভ করা
+  const cleanUrl = NEXTALK_SERVER_URL.replace(/\/+$/, "");
+
+  const res = await fetch(`${cleanUrl}/signin`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ email, password })
+  });
+
+  // ২. রেসপন্স Type চেক করা
+  const contentType = res.headers.get("content-type");
+  let data = {};
+
+  if (contentType && contentType.includes("application/json")) {
+    data = await res.json();
+  } else {
+    // যদি HTML এরর পেজ আসে
+    const errorText = await res.text();
+    console.error("Server HTML Response:", errorText);
+    throw new Error(`Server returned non-JSON error status: ${res.status}`);
+  }
+
+  if (!res.ok) {
+    alert(data.message || "Login failed");
+    loginBtn.disabled = false;
+    loginBtn.innerText = "Login";
+    return;
+  }
+
+  // Success Logic
+  localStorage.setItem("token", data.token);
+  localStorage.setItem("loginMethod", "nextalk");
+
+  const user = {
+    id: data.user.id,
+    username: data.user.username,
+    email: data.user.email,
+    bio: data.user.bio || "",
+    avatar: data.user.avatar || "",
+    cover_photo: data.user.cover_photo || ""
+  };
+
+  localStorage.setItem("userNex", JSON.stringify(user));
+
+  loginBtn.innerText = "Success ✓";
+
+  setTimeout(() => {
+    window.location.href = "nextalk.html";
+  }, 800);
+
+} catch (err) {
+  console.error("Signin Catch Error:", err);
+  alert("Network or Server error. Check browser console for details.");
+  loginBtn.disabled = false;
+  loginBtn.innerText = "Login";
+    }
+});
+
+function continueWithAsirNet() {
+    asirnetBtn.disabled = true;
+    asirnetBtn.innerText = "Redirecting to AsirNet...";
+
+    const currentRedirect = encodeURIComponent(window.location.href.split('?')[0]);
+    
+    setTimeout(() => {
+        window.location.href = `${ASIRNET_SSO_PAGE_URL}?redirect=${currentRedirect}`;
+    }, 400);
+}
+
+async function forgot() {
+    const emailInput = document.getElementById("loginEmail");
+    const email = emailInput ? emailInput.value.trim() : "";
+
+    if (!email) {
+        alert("Enter your email address in the field first");
+        return;
+    }
+
+    try {
+        const res = await fetch(`${NEXTALK_SERVER_URL}/forgot-password`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email })
+        });
+
+        const data = await res.json();
+        alert(data.message || "Password reset instructions sent to your email");
+    } catch (err) {
+        console.error(err);
+        alert("Server error");
+    }
+}
+</script>
+
+</body>
+</html>
