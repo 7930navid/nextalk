@@ -619,7 +619,7 @@ async function handleDeleteAccount() {
     }
 
     try {
-        const response = await fetch("https://nextalk-9yw9.onrender.com/delete-account", {
+        const response = await fetch("https://nextalk-user-server.onrender.com/delete-account", {
             method: "DELETE",
             headers: {
                 "Content-Type": "application/json",
@@ -702,7 +702,7 @@ async function handleDeleteAccount() {
 
                         try {
                             const res = await fetch(
-                                `https://nextalk-9yw9.onrender.com/me?email=${encodeURIComponent(otherEmail)}`,
+                                `https://https://nextalk-user-server.onrender.com/me?email=${encodeURIComponent(otherEmail)}`,
                                 {
                                     method: "GET",
                                     headers: {
