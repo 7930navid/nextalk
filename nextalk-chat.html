@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexTalk Modern Chat</title>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #311042 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        /* ================= 1. FIXED LOADER ================= */
+        #loader-overlay {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            z-index: 9999;
+            transition: opacity 0.4s ease, visibility 0.4s ease;
+        }
+
+        #loader-overlay.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .loader-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+            border-radius: 28px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        }
+
+        .loader-wrapper {
+            position: relative;
+            width: 140px;
+            height: 140px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .outer-loader {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 4px solid transparent;
+            border-top: 4px solid #6366f1;
+            border-right: 4px solid #a855f7;
+            animation: spinX 1.5s linear infinite;
+        }
+
+        .inner-loader {
+            position: absolute;
+            width: 78%;
+            height: 78%;
+            border-radius: 50%;
+            border: 4px solid transparent;
+            border-bottom: 4px solid #ec4899;
+            border-left: 4px solid #3b82f6;
+            animation: spinY 1s linear infinite;
+        }
+
+        .logo-loader {
+            width: 68px;
+            height: 68px;
+            object-fit: contain;
+            z-index: 2;
+            filter: drop-shadow(0 0 10px rgba(168, 85, 247, 0.7));
+        }
+
+        .loader-text {
+            margin-top: 20px;
+            font-weight: 600;
+            color: #f8fafc;
+            font-size: 15px;
+            letter-spacing: 1px;
+        }
+
+        @keyframes spinX { 100% { transform: rotate(360deg); } }
+        @keyframes spinY { 100% { transform: rotate(-360deg); } }
+
+        .chat-card {
+            width: 100%;
+            max-width: 420px;
+            height: 95vh;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 28px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 30px rgba(99, 102, 241, 0.2);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        /* Fixed Top Header Display */
+        .chat-header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 70px;
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 0 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 4px 20px rgba(79, 70, 229, 0.3);
+            z-index: 100;
+        }
+
+        .back-btn {
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            margin-right: 5px;
+            text-decoration: none;
+        }
+
+        .user-avatar-container {
+            position: relative;
+            width: 44px;
+            height: 44px;
+        }
+
+        .user-avatar-img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid rgba(255, 255, 255, 0.8);
+        }
+
+        .online-status {
+            width: 12px;
+            height: 12px;
+            background-color: #10b981;
+            border: 2px solid #7c3aed;
+            border-radius: 50%;
+            position: absolute;
+            bottom: 0;
+            right: 0;
+        }
+
+        .user-info {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .user-name {
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .user-id {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.8);
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Scrollable Message Area */
+        .chat-messages {
+            flex: 1;
+            padding: 85px 20px 20px 20px;
+            background-color: #f1f5f9;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .chat-messages::-webkit-scrollbar {
+            width: 5px;
+        }
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+
+        .message {
+            max-width: 78%;
+            padding: 12px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            line-height: 1.5;
+            word-wrap: break-word;
+            position: relative;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.received {
+            background: #ffffff;
+            color: #1e293b;
+            align-self: flex-start;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+            border: 1px solid #e2e8f0;
+        }
+
+        .message.sent {
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+            color: #ffffff;
+            align-self: flex-end;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+        }
+
+        .message-time {
+            font-size: 10px;
+            margin-top: 4px;
+            display: block;
+            opacity: 0.7;
+            text-align: right;
+        }
+
+        .chat-input-area {
+            padding: 15px;
+            background: #ffffff;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .chat-input-area input {
+            flex: 1;
+            padding: 14px 20px;
+            border: 1.5px solid #e2e8f0;
+            background: #f8fafc;
+            border-radius: 30px;
+            outline: none;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .chat-input-area input:focus {
+            border-color: #6366f1;
+            background: #ffffff;
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+        }
+
+        .send-btn {
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+            color: white;
+            border: none;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        .send-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4);
+        }
+
+        .send-btn:active {
+            transform: scale(0.95);
+        }
+
+        .empty-chat {
+            text-align: center;
+            color: #94a3b8;
+            font-size: 13px;
+            margin: auto 0;
+        }
+    </style>
+</head>
+<body>
+
+  <!-- LOADER OVERLAY -->
+  <div id="loader-overlay">
+    <div class="loader-container">
+        <div class="loader-wrapper">
+          <div class="outer-loader"></div>
+          <div class="inner-loader"></div>
+          <img src="https://i.ibb.co.com/GvGHPmv3/20260725-193921.png" alt="logo" class="logo-loader" onerror="this.src='https://via.placeholder.com/68/6366f1/ffffff?text=NT'">          
+        </div>
+        <div class="loader-text">Loading Chat...</div>    
+    </div>
+  </div>  
+
+  <!-- CHAT INTERFACE -->
+  <div class="chat-card">
+      
+      <!-- Fixed Header Display at Top -->
+      <div class="chat-header">
+          <a href="javascript:history.back()" class="back-btn"><i class="fa-solid fa-arrow-left"></i></a>
+          <div class="user-avatar-container">
+              <img id="header-avatar" src="https://i.ibb.co.com/Lh01SvdR/FB-IMG-1784721801953.jpg" class="user-avatar-img" alt="User">
+              <span class="online-status"></span>
+          </div>
+          <div class="user-info">
+              <span class="user-name" id="header-name">Loading...</span>
+              <span class="user-id" id="header-email">...</span>
+          </div>
+      </div>
+
+      <!-- Messages Display Box -->
+      <div class="chat-messages" id="chat-messages">
+          <!-- Messages will be rendered here dynamically -->
+      </div>
+
+      <!-- Input Section -->
+      <div class="chat-input-area">
+          <input type="text" id="message-input" placeholder="Type a message..." onkeypress="handleKeyPress(event)">
+          <button class="send-btn" onclick="sendMessage()">
+              <i class="fa-solid fa-paper-plane"></i>
+          </button>
+      </div>
+
+  </div>
+
+  <script>
+    // Server Endpoints
+    const BRIDGE_SERVER = "https://nextalk-9yw9.onrender.com/api/bridge";
+    const USER_SERVER = "https://nextalk-user-server.onrender.com";
+
+    // LocalStorage Data
+    const storedUser = JSON.parse(localStorage.getItem("userNex") || "{}");
+    const myEmail = storedUser.email || "";
+    const token = localStorage.getItem("token");
+
+    // Get Friend Email from URL Parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const friendEmail = urlParams.get('friend');
+
+    function hideLoader() {
+        document.getElementById('loader-overlay').classList.add('hidden');
+    }
+
+    /* =========================================================
+       1. INDEXEDDB SETUP (Phone Local Database)
+       ========================================================= */
+    function openChatDB() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open("NexTalkLocalDB", 1);
+            request.onupgradeneeded = (event) => {
+                const db = event.target.result;
+                if (!db.objectStoreNames.contains("chats")) {
+                    db.createObjectStore("chats", { keyPath: "id", autoIncrement: true });
+                }
+            };
+            request.onsuccess = (event) => resolve(event.target.result);
+            request.onerror = (event) => reject(event.target.error);
+        });
+    }
+
+    async function saveLocalMessage(msgObj) {
+        const db = await openChatDB();
+        const tx = db.transaction("chats", "readwrite");
+        const store = tx.objectStore("chats");
+        store.add(msgObj);
+    }
+
+    async function getLocalMessages(friend) {
+        const db = await openChatDB();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction("chats", "readonly");
+            const store = tx.objectStore("chats");
+            const req = store.getAll();
+
+            req.onsuccess = () => {
+                const all = req.result || [];
+                const filtered = all.filter(
+                    m => (m.sender_id === myEmail && m.receiver_id === friend) ||
+                         (m.sender_id === friend && m.receiver_id === myEmail)
+                );
+                resolve(filtered);
+            };
+            req.onerror = (e) => reject(e.target.error);
+        });
+    }
+
+    /* =========================================================
+       2. USER PROFILE LOADING
+       ========================================================= */
+    async function loadFriendProfile() {
+        if (!friendEmail) {
+            alert("No friend specified!");
+            window.location.href = "index.html";
+            return;
+        }
+
+        try {
+            const response = await fetch(`${USER_SERVER}/me?email=${encodeURIComponent(friendEmail)}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                document.getElementById('header-name').innerText = data.username || data.name || "NexTalk User";
+                document.getElementById('header-email').innerText = data.email || friendEmail;
+                if (data.avatar || data.profile_pic) {
+                    document.getElementById('header-avatar').src = data.avatar || data.profile_pic;
+                }
+            } else {
+                document.getElementById('header-name').innerText = friendEmail.split('@')[0];
+                document.getElementById('header-email').innerText = friendEmail;
+            }
+        } catch (err) {
+            console.error("Error loading profile:", err);
+            document.getElementById('header-name').innerText = friendEmail;
+            document.getElementById('header-email').innerText = friendEmail;
+        }
+    }
+
+    /* =========================================================
+       3. FETCH & SYNC MESSAGES
+       ========================================================= */
+    async function loadAndSyncMessages() {
+        if (!myEmail || !friendEmail) return;
+
+        // Step A: Load from Phone IndexedDB first
+        const localMsgs = await getLocalMessages(friendEmail);
+        const chatContainer = document.getElementById('chat-messages');
+        chatContainer.innerHTML = '';
+
+        if (localMsgs.length === 0) {
+            chatContainer.innerHTML = `<div class="empty-chat">Say Hi to start conversation! 👋</div>`;
+        } else {
+            localMsgs.forEach(msg => {
+                const isSent = (msg.sender_id === myEmail);
+                appendMessageUI(msg.message_text || msg.text, isSent, msg.created_at || msg.timestamp);
+            });
+        }
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+        hideLoader();
+
+        // Step B: Sync Draft Messages from Bridge Server (Pending messages)
+        try {
+            const res = await fetch(`${BRIDGE_SERVER}/drafts/${encodeURIComponent(myEmail)}`);
+            if (res.ok) {
+                const serverData = await res.json();
+                const pendingMsgs = serverData.data || [];
+
+                // Filter messages relevant to current friend
+                const friendPending = pendingMsgs.filter(m => m.sender_id === friendEmail);
+
+                for (let msg of friendPending) {
+                    const msgObj = {
+                        sender_id: msg.sender_id,
+                        receiver_id: msg.receiver_id,
+                        message_text: msg.message_text,
+                        created_at: msg.created_at
+                    };
+                    await saveLocalMessage(msgObj);
+                    appendMessageUI(msg.message_text, false, msg.created_at);
+                }
+
+                // Clear synced draft queue on server
+                if (pendingMsgs.length > 0) {
+                    await fetch(`${BRIDGE_SERVER}/drafts/clear/${encodeURIComponent(myEmail)}`, { method: 'DELETE' });
+                }
+            }
+        } catch (err) {
+            console.error("Bridge Sync Error:", err);
+        }
+    }
+
+    // Append Message to UI
+    function appendMessageUI(text, isSent, time) {
+        const chatMessages = document.getElementById('chat-messages');
+        const emptyText = chatMessages.querySelector('.empty-chat');
+        if (emptyText) emptyText.remove();
+
+        const timeStr = time ? new Date(time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        const messageElement = document.createElement('div');
+        messageElement.classList.add('message', isSent ? 'sent' : 'received');
+        messageElement.innerHTML = `${text} <span class="message-time">${timeStr}</span>`;
+
+        chatMessages.appendChild(messageElement);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    /* =========================================================
+       4. SEND MESSAGE FUNCTION
+       ========================================================= */
+    async function sendMessage() {
+        const input = document.getElementById('message-input');
+        const text = input.value.trim();
+
+        if (!text || !myEmail || !friendEmail) return;
+
+        const timestamp = new Date().toISOString();
+
+        // 1. Save to Local IndexedDB
+        const localMsgObj = {
+            sender_id: myEmail,
+            receiver_id: friendEmail,
+            message_text: text,
+            created_at: timestamp
+        };
+        await saveLocalMessage(localMsgObj);
+
+        // 2. Render to UI Immediately
+        appendMessageUI(text, true, timestamp);
+        input.value = '';
+
+        // 3. Post to Bridge Server Queue (Draft DB)
+        try {
+            await fetch(`${BRIDGE_SERVER}/drafts`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    sender_id: myEmail,
+                    receiver_id: friendEmail,
+                    text: text
+                })
+            });
+        } catch (error) {
+            console.error("Failed to send message to Bridge Server:", error);
+        }
+    }
+
+    function handleKeyPress(event) {
+        if (event.key === 'Enter') {
+            sendMessage();
+        }
+    }
+
+    // Page Initialization
+    window.addEventListener('DOMContentLoaded', async () => {
+        await loadFriendProfile();
+        await loadAndSyncMessages();
+    });
+  </script>
+
+</body>
+</html>
