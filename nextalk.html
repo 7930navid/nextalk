@@ -184,32 +184,6 @@
             z-index: 2;
         }
 
-        .story-avatar {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            border: 2px solid var(--primary-color);
-            position: absolute;
-            top: 8px;
-            left: 8px;
-            z-index: 2;
-            object-fit: cover;
-        }
-
-        .story-name {
-            position: absolute;
-            bottom: 8px;
-            left: 8px;
-            right: 8px;
-            color: white;
-            font-size: 11px;
-            font-weight: 600;
-            z-index: 2;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
         /* Tabs */
         .tab-division {
             display: flex;
@@ -263,7 +237,7 @@
         }
 
         .friend-item:active {
-            background-color: #f0f2f5;
+            background-color: #f0f25;
         }
 
         .avatar-wrapper {
@@ -280,7 +254,6 @@
         .online-badge {
             width: 12px;
             height: 12px;
-            background-color: #31a24c;
             border: 2px solid white;
             border-radius: 50%;
             position: absolute;
@@ -429,54 +402,50 @@
             font-weight: 700;
         }
         
-.profile-button-container {
-  display: flex;
-  gap: 12px;
-  margin-top: 20px;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-}
+        .profile-button-container {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
 
-/* কমন বোতামের স্টাইল */
-.btn {
-  padding: 10px 18px;
-  font-size: 14px;
-  font-weight: 600;
-  border-radius: 8px;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s ease-in-out;
-  outline: none;
-}
+        .btn {
+            padding: 10px 18px;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            outline: none;
+        }
 
-/* Log out বোতামের স্টাইল (স্ট্যান্ডার্ড গ্রে/ডার্ক লুক) */
-.btn-logout {
-  background-color: #f0f2f5;
-  color: #333;
-  border: 1px solid #ccc;
-}
+        .btn-logout {
+            background-color: #f0f2f5;
+            color: #333;
+            border: 1px solid #ccc;
+        }
 
-.btn-logout:hover {
-  background-color: #e4e6eb;
-  color: #000;
-}
+        .btn-logout:hover {
+            background-color: #e4e6eb;
+            color: #000;
+        }
 
-/* Delete Account বোতামের স্টাইল (ডেঞ্জার/লাল লুক) */
-.btn-delete {
-  background-color: #ff4d4d;
-  color: #ffffff;
-}
+        .btn-delete {
+            background-color: #ff4d4d;
+            color: #ffffff;
+        }
 
-.btn-delete:hover {
-  background-color: #dc3545;
-  box-shadow: 0 4px 10px rgba(220, 53, 69, 0.3);
-}
+        .btn-delete:hover {
+            background-color: #dc3545;
+            box-shadow: 0 4px 10px rgba(220, 53, 69, 0.3);
+        }
 
-.btn:active {
-  transform: scale(0.98);
-}
-
+        .btn:active {
+            transform: scale(0.98);
+        }
     </style>
 </head>
 <body>
@@ -492,10 +461,10 @@
                         <img src="https://i.ibb.co.com/GvGHPmv3/20260725-193921.png" alt="Nextalk Logo" width="150px" onerror="this.src='https://i.ibb.co.com/ccMxvp0S/asirnet-link-logo.png'">
                     </div>
                 </div>
-                <!-- Search Bar -->
+                <!-- Live Server Search Box -->
                 <div class="search-box">
                     <i class="fa-solid fa-magnifying-glass"></i>
-                    <input type="text" id="searchInput" placeholder="Search friends..." oninput="filterFriends()">
+                    <input type="text" id="searchInput" placeholder="Search friends by name or email..." onkeyup="handleSearch()">
                 </div>
             </header>
 
@@ -514,7 +483,7 @@
                 <!-- Division Option -->
                 <div class="tab-division">
                     <button class="tab-btn active" onclick="switchTab('asirnet', event)">AsirNet Friends</button>
-                    <button class="tab-btn" onclick="switchTab('local', event)">Local Friends</button>
+                    <button class="tab-btn" onclick="switchTab('local', event)">NexTalk People</button>
                 </div>
 
                 <!-- AsirNet Friends Tab -->
@@ -524,10 +493,10 @@
                     </div>
                 </div>
 
-                <!-- Local Friends Tab -->
+                <!-- Local Friends Tab (Displays All Users from Server) -->
                 <div id="local" class="tab-content">
                     <div class="friends-list" id="localFriendsList">
-                        <div class="empty-text">No local friends found.</div>
+                        <div class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Loading users...</div>
                     </div>
                 </div>
             </div>
@@ -546,10 +515,10 @@
                     <p class="profile-bio" id="profileBio">No bio added yet.</p>
                 </div>
             </div>
-<div class="profile-button-container">
-  <button class="btn btn-logout" onclick="handleLogout()">Log out</button>
-  <button class="btn btn-delete" onclick="handleDeleteAccount()">Delete Account</button>
-</div>
+            <div class="profile-button-container">
+                <button class="btn btn-logout" onclick="handleLogout()">Log out</button>
+                <button class="btn btn-delete" onclick="handleDeleteAccount()">Delete Account</button>
+            </div>
         </div>
 
         <!-- ==================== 3. SETTINGS PAGE ==================== -->
@@ -592,63 +561,25 @@
 
     <!-- JavaScript Logic -->
     <script>
-        
- // ১. লগআউট করার ফাংশন
-function handleLogout() {
-    if (confirm("Are you sure you want to log out?")) {
-        // LocalStorage থেকে টোকেন ও ইউজার ইনফো মুছে ফেলা
-        localStorage.removeItem("token");
-        localStorage.removeItem("userNex");
-        
-        // লগইন পেজে রিডাইরেক্ট করা
-        window.location.href = "login.html"; // আপনার লগইন পেজের লিংক দিন
-    }
-}
+        const USER_SERVER = "https://nextalk-user-server.onrender.com";
 
-// ২. অ্যাকাউন্ট ডিলিট করার ফাংশন
-async function handleDeleteAccount() {
-    const confirmDelete = confirm("Warning: This action cannot be undone. Are you sure you want to delete your account?");
-    
-    if (!confirmDelete) return;
-
-    const token = localStorage.getItem("token");
-
-    if (!token) {
-        alert("Authentication token missing. Please log in again.");
-        return;
-    }
-
-    try {
-        const response = await fetch("https://nextalk-user-server.onrender.com/delete-account", {
-            method: "DELETE",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${token}` // Auth middleware-এর জন্য টোকেন পাঠানো হচ্ছে
-            }
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-            alert(data.message || "Account successfully deleted.");
-            
-            // LocalStorage পরিষ্কার করা
-            localStorage.clear();
-            
-            // সাইনআপ বা লগইন পেজে পাঠিয়ে দেওয়া
-            window.location.href = "login.html";
+        // ১. Auth Guard Check
+        const rawUser = localStorage.getItem('userNex');
+        if (!rawUser || rawUser === "undefined" || rawUser === "null") {
+            location.href = "sign_in.html";
         } else {
-            alert(data.message || "Failed to delete account.");
+            try {
+                const user = JSON.parse(rawUser);
+                if (!user || !user.email) location.href = "sign_in.html";
+            } catch (e) {
+                location.href = "sign_in.html";
+            }
         }
-    } catch (error) {
-        console.error("Error deleting account:", error);
-        alert("Server error. Please try again later.");
-    }
-}
 
-        // ১. LocalStorage থেকে ইউজারের ডেটা লোড করা
-        const storedUser = JSON.parse(localStorage.getItem("userNex") || "{}");
+        const storedUser = JSON.parse(rawUser || "{}");
         const userEmail = storedUser.email || "";
+        let currentActiveTab = 'asirnet';
+        let searchDebounceTimer = null;
 
         // Profile UI Hydration
         if (storedUser) {
@@ -664,104 +595,117 @@ async function handleDeleteAccount() {
             document.getElementById("profileBio").innerText = storedUser.bio || "No bio available";
         }
 
-        let allAsirNetFriends = [];
-
-        // ২. AsirNet Friends ডাটা সার্ভার থেকে ফেচ করা
+        // ২. AsirNet Friends ফেচ করার ফাংশন
         async function fetchAsirNetFriends() {
             const container = document.getElementById("asirnetFriendsList");
             const token = localStorage.getItem("token");
 
-            if (!userEmail) {
-                container.innerHTML = `<div class="empty-text">User email not found. Please log in again.</div>`;
-                return;
-            }
-
             try {
-                // ১. ফ্রেন্ডস লিস্ট API থেকে ফ্রেন্ড রিলেশনশিপের ডেটা আনা
-                const response = await fetch(
-                    `https://connection-server-9bzk.onrender.com/friends/${encodeURIComponent(userEmail)}`
-                );
-
-                if (!response.ok) {
-                    throw new Error(`Server returned ${response.status}`);
-                }
+                const response = await fetch(`https://connection-server-9bzk.onrender.com/friends/${encodeURIComponent(userEmail)}`);
+                if (!response.ok) throw new Error(`Server status ${response.status}`);
 
                 const data = await response.json();
                 const friendsArray = data.data || (Array.isArray(data) ? data : (data.friends || []));
 
-         if (friendsArray.length === 0) {
+                if (friendsArray.length === 0) {
                     container.innerHTML = `<div class="empty-text">No AsirNet friends found 😐</div>`;
                     return;
                 }
 
-                // ২. প্রতিটি ফ্রেন্ডের ইমেইল দিয়ে users-server থেকে মূল প্রোফাইল এনরিচ (Enrich) করা
                 const enrichedFriends = await Promise.all(
                     friendsArray.map(async (f) => {
-                        // অপরপাশের ইউজারের ইমেইল বের করা
                         const otherEmail = f.sender_id === userEmail ? f.receiver_id : (f.sender_id || f.email || f);
-
                         try {
-                            const res = await fetch(
-                                `https://nextalk-user-server.onrender.com/me?email=${encodeURIComponent(otherEmail)}`,
-                                {
-                                    method: "GET",
-                                    headers: {
-                                        Authorization: `Bearer ${token}`
-                                    }
-                                }
-                            );
-
+                            const res = await fetch(`${USER_SERVER}/me?email=${encodeURIComponent(otherEmail)}`, {
+                                headers: { Authorization: `Bearer ${token}` }
+                            });
                             if (!res.ok) return null;
-                            const profileData = await res.json();
-
-                            return {
-                                ...f,
-                                profile: profileData
-                            };
+                            return await res.json();
                         } catch (err) {
-                            console.error(`Error fetching profile for ${otherEmail}:`, err);
                             return null;
                         }
                     })
                 );
 
-                // Null রেসপন্স বা ব্যর্থ প্রোফাইল ফিল্টার করা
-                const validFriends = enrichedFriends.filter(item => item && item.profile);
-                allAsirNetFriends = validFriends;
-
-                // ৩. আপডেট করা প্রোফাইল ডেটা রেন্ডারার ফাংশনে পাঠানো
-                renderFriendsList(validFriends);
+                const validFriends = enrichedFriends.filter(item => item !== null);
+                renderUserCards(validFriends, "asirnetFriendsList");
 
             } catch (error) {
                 console.error("Error fetching friends:", error);
-                container.innerHTML = `
-                    <div class="empty-text" style="color: #ff4d4d;">
-                        <i class="fa-solid fa-triangle-exclamation"></i> Could not load friends.<br>
-                        <small>Check server connection or try again.</small>
-                    </div>`;
+                container.innerHTML = `<div class="empty-text" style="color: #ff4d4d;">Could not load friends.</div>`;
             }
         }
 
-        // ৩. UI রেন্ডারিং ফাংশন (সংশোধিত)
-        function renderFriendsList(friends) {
-            const container = document.getElementById("asirnetFriendsList");
+        // ৩. Local Tab-এর জন্য All Users ফেচ করা (/users endpoint)
+        async function fetchLocalUsers() {
+            const container = document.getElementById("localFriendsList");
+            container.innerHTML = `<div class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Loading users...</div>`;
 
-            if (!friends || friends.length === 0) {
-                container.innerHTML = `<div class="empty-text">No AsirNet friends found 😐</div>`;
+            try {
+                const response = await fetch(`${USER_SERVER}/users`);
+                if (!response.ok) throw new Error("Failed to fetch users");
+
+                const users = await response.json();
+                
+                // নিজের প্রোফাইল ফিল্টার করে বাদ দেওয়া
+                const filteredUsers = users.filter(u => u.email !== userEmail);
+                renderUserCards(filteredUsers, "localFriendsList");
+
+            } catch (error) {
+                console.error("Error loading local users:", error);
+                container.innerHTML = `<div class="empty-text" style="color: #ff4d4d;">Failed to load users from server.</div>`;
+            }
+        }
+
+        // ৪. সার্ভার থেকে লাইভ সার্চ করার ফাংশন (/search?q=query)
+        function handleSearch() {
+            clearTimeout(searchDebounceTimer);
+            
+            searchDebounceTimer = setTimeout(async () => {
+                const query = document.getElementById("searchInput").value.trim();
+                const containerId = currentActiveTab === 'asirnet' ? 'asirnetFriendsList' : 'localFriendsList';
+                const container = document.getElementById(containerId);
+
+                if (!query) {
+                    if (currentActiveTab === 'asirnet') fetchAsirNetFriends();
+                    else fetchLocalUsers();
+                    return;
+                }
+
+                container.innerHTML = `<div class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Searching...</div>`;
+
+                try {
+                    const response = await fetch(`${USER_SERVER}/search?q=${encodeURIComponent(query)}`);
+                    if (!response.ok) throw new Error("Search failed");
+
+                    const searchResults = await response.json();
+                    const filtered = searchResults.filter(u => u.email !== userEmail);
+                    
+                    renderUserCards(filtered, containerId);
+                } catch (err) {
+                    console.error("Search error:", err);
+                    container.innerHTML = `<div class="empty-text">Error while searching.</div>`;
+                }
+            }, 300); // 300ms Debounce
+        }
+
+        // ৫. কমন UI কার্ড রেন্ডারার
+        function renderUserCards(usersList, targetContainerId) {
+            const container = document.getElementById(targetContainerId);
+
+            if (!usersList || usersList.length === 0) {
+                container.innerHTML = `<div class="empty-text">No users found 😐</div>`;
                 return;
             }
 
-            const html = friends.map(friend => {
-                const prof = friend.profile || {};
-                const name = prof.username || prof.name || "AsirNet User";
-                const avatar = prof.avatar || prof.profile_pic || "https://i.ibb.co.com/Lh01SvdR/FB-IMG-1784721801953.jpg";
-                const bioOrMsg = prof.bio || prof.email || "Active on AsirNet";
-
-                // ✅ সঠিক ফ্রেন্ড ইমেইল এক্সট্র্যাক্ট করা
-                const friendEmail = prof.email || (friend.sender_id === userEmail ? friend.receiver_id : friend.sender_id);
+            const html = usersList.map(user => {
+                const name = user.username || user.name || "NexTalk User";
+                const avatar = user.avatar || user.profile_pic || "https://i.ibb.co.com/Lh01SvdR/FB-IMG-1784721801953.jpg";
+                const bioOrEmail = user.bio || user.email || "NexTalk User";
+                const email = user.email;
 
                 return `
-                    <div class="friend-item" onclick="openChat('${friendEmail}')" style="cursor: pointer;">
+                    <div class="friend-item" onclick="openChat('${email}')">
                         <div class="avatar-wrapper">
                             <img src="${avatar}" class="friend-avatar" alt="${name}" onerror="this.src='https://i.ibb.co.com/Lh01SvdR/FB-IMG-1784721801953.jpg'">
                             <div class="online-badge"></div>
@@ -769,9 +713,9 @@ async function handleDeleteAccount() {
                         <div class="friend-info">
                             <div class="friend-header">
                                 <span class="friend-name">${name}</span>
-                                <span class="message-time">Active</span>
+                                <span class="message-time"></span>
                             </div>
-                            <span class="last-message">${bioOrMsg}</span>
+                            <span class="last-message">${bioOrEmail}</span>
                         </div>
                     </div>
                 `;
@@ -780,21 +724,32 @@ async function handleDeleteAccount() {
             container.innerHTML = html;
         }
 
-        // ৪. চ্যাট পেজে নেভিগেট করার ফাংশন
+        // ৬. চ্যাট খুলার ফাংশন
         function openChat(friendEmail) {
-            if (!friendEmail) {
-                console.error("Friend email is required!");
-                return;
-            }
-
-            // URL-এ বিশেষ অক্ষর থাকলে যেন সমস্যা না হয় তাই encodeURIComponent ব্যবহার করা ভালো
-            const encodedEmail = encodeURIComponent(friendEmail);
-
-            // চ্যাট পেজের পথ (Chat page URL)
-            window.location.href = `nextalk-chat.html?friend=${encodedEmail}`;
+            if (!friendEmail) return;
+            window.location.href = `nextalk-chat.html?friend=${encodeURIComponent(friendEmail)}`;
         }
 
-        // ৫. মোট ৪টি মূল পেজের মধ্যে সুইচিং লজিক
+        // ৭. ট্যাব সুইচিং লজিক
+        function switchTab(tabName, event) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            event.currentTarget.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+            currentActiveTab = tabName;
+
+            // সার্চ ফিল্ড রিসেট
+            document.getElementById("searchInput").value = "";
+
+            if (tabName === 'local') {
+                fetchLocalUsers();
+            } else {
+                fetchAsirNetFriends();
+            }
+        }
+
+        // ৮. মূল পেজ সুইচিং
         function switchMainPage(pageName, btnElement) {
             document.querySelectorAll('.page-view').forEach(page => page.classList.remove('active-page'));
             document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
@@ -803,51 +758,45 @@ async function handleDeleteAccount() {
             btnElement.classList.add('active');
         }
 
-        // ৬. হোম পেজের ভেতরের সাব-ট্যাব সুইচিং
-        function switchTab(tabName, event) {
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-
-            event.currentTarget.classList.add('active');
-            document.getElementById(tabName).classList.add('active');
+        // ৯. লগআউট ও একাউন্ট ডিলিট
+        function handleLogout() {
+            if (confirm("Are you sure you want to log out?")) {
+                localStorage.removeItem("token");
+                localStorage.removeItem("userNex");
+                window.location.href = "sign_in.html";
+            }
         }
 
-        // ৭. ফ্রেন্ড সার্চ ফিল্টারিং (সংশোধিত)
-        function filterFriends() {
-            const query = document.getElementById("searchInput").value.toLowerCase().trim();
-            const filtered = allAsirNetFriends.filter(f => {
-                const prof = f.profile || {};
-                const name = (prof.username || prof.name || "").toLowerCase();
-                const email = (prof.email || "").toLowerCase();
-                return name.includes(query) || email.includes(query);
-            });
-            renderFriendsList(filtered);
+        async function handleDeleteAccount() {
+            if (!confirm("Warning: This action cannot be undone. Delete your account?")) return;
+            const token = localStorage.getItem("token");
+
+            try {
+                const response = await fetch(`${USER_SERVER}/delete-account`, {
+                    method: "DELETE",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    alert("Account successfully deleted.");
+                    localStorage.clear();
+                    window.location.href = "login.html";
+                } else {
+                    const data = await response.json();
+                    alert(data.message || "Failed to delete account.");
+                }
+            } catch (error) {
+                alert("Server error. Try again later.");
+            }
         }
 
+        // পেজ লোড ইভেন্ট
         window.addEventListener("DOMContentLoaded", () => {
             fetchAsirNetFriends();
         });
-    
-    
-// ১. localStorage থেকে ইউজার অবজেক্ট বা স্ট্রিং পড়া
-const rawUser = localStorage.getItem('userNex');
-
-// ২. যদি ডাটা না থাকে অথবা সেটি 'undefined' / 'null' স্ট্রিং হয়
-if (!rawUser || rawUser === "undefined" || rawUser === "null") {
-    location.href = "sign_in.html";
-} else {
-    try {
-        // ৩. পার্স (Parse) করে চেক করা
-        const user = JSON.parse(rawUser);
-        if (!user || !user.email) {
-            location.href = "sign_in.html";
-        }
-    } catch (e) {
-        // JSON সঠিক না হলে লগইন পেজে পাঠিয়ে দেবে
-        location.href = "sign_in.html";
-    }
-}
-    
     </script>
 </body>
 </html>
