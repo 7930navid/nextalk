@@ -372,8 +372,9 @@ section button:hover {
 
 <script>
 // CONFIGURATION
-const NEXTALK_SERVER_URL = "https://nextalk-user-server.onrender.com/"; 
-const ASIRNET_SSO_PAGE_URL = "https://7930navid.github.io/asirnet/varification.html"; // Production এ আসল URL দিন
+const NEXTALK_SERVER_URL = "https://nextalk-user-server.onrender.com"; 
+const USER_SERVER_URL = "https://users-server-xyvg.onrender.com"; 
+const ASIRNET_SSO_PAGE_URL = "https://7930navid.github.io/asirnet/varification.html";
 
 const form = document.getElementById("asirnetLoginForm");
 const loginBtn = document.querySelector(".login-btn");
@@ -386,74 +387,96 @@ window.addEventListener("DOMContentLoaded", async () => {
   try {
     const urlParams = new URLSearchParams(window.location.search);
     const ssoToken = urlParams.get("sso_token");
+    const userEmail = urlParams.get("email");
 
-    if (ssoToken) {
+    // ১. SSO Token এবং Email এর মধ্যে যেকোনো একটি থাকলে ফর্ম হাইড হবে
+    if (ssoToken || userEmail) {
       if (form) form.classList.add("hidden");
       if (orDivider) orDivider.classList.add("hidden");
       if (linksSection) linksSection.classList.add("hidden");
 
       statusMsg.classList.remove("hidden");
-      statusMsg.innerText = "Authenticating with AsirNet SSO...";
+      statusMsg.innerText = "Authenticating with AsirNet...";
 
       if (asirnetBtn) {
         asirnetBtn.disabled = true;
         asirnetBtn.innerText = "Authenticating...";
       }
 
-      // ১. URL ট্রিম করা হচ্ছে যাতে ডাবল স্ল্যাশ না হয়
-      const cleanServerUrl = NEXTALK_SERVER_URL.replace(/\/+$/, "");
+      let userToSave = null;
+      let sessionToken = ssoToken || "";
 
-      const res = await fetch(`${cleanServerUrl}/sso-login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: ssoToken })
-      });
+      // ২. যদি URL-এ sso_token থাকে
+      if (ssoToken) {
+        const cleanServerUrl = NEXTALK_SERVER_URL.replace(/\/+$/, "");
+        const res = await fetch(`${cleanServerUrl}/sso-login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: ssoToken })
+        });
 
-      // ২. HTML Error নাকি JSON তা নিরাপদভাবে চেক করা
-      let data = {};
-      const contentType = res.headers.get("content-type");
-      if (contentType && contentType.includes("application/json")) {
-        data = await res.json();
+        const contentType = res.headers.get("content-type");
+        let data = {};
+        if (contentType && contentType.includes("application/json")) {
+          data = await res.json();
+        }
+
+        if (res.ok) {
+          sessionToken = data.token;
+          userToSave = data.user;
+        } else {
+          throw new Error(data.message || "SSO Token verification failed");
+        }
       }
 
-      if (res.ok) {
-        statusMsg.innerText = "SSO Success ✓ Redirecting...";
+      // ৩. যদি URL-এ email থাকে (বা SSO ডাটা ফেচ করার পর বাকি বিস্তারিত দরকার হয়)
+      const emailToFetch = userEmail || (userToSave && userToSave.email);
+      
+      if (emailToFetch) {
+        statusMsg.innerText = "Fetching user profile...";
+        const cleanUserServerUrl = USER_SERVER_URL.replace(/\/+$/, "");
+        
+        const userRes = await fetch(`${cleanUserServerUrl}/me?email=${encodeURIComponent(emailToFetch)}`);
+        if (userRes.ok) {
+          const fullUserData = await userRes.json();
+          // User Server থেকে সম্পূর্ণ ডাটা মার্জ করা
+          userToSave = {
+            id: fullUserData.id,
+            username: fullUserData.username,
+            email: fullUserData.email,
+            bio: fullUserData.bio || "",
+            avatar: fullUserData.avatar || "",
+            cover_photo: fullUserData.cover_photo || ""
+          };
+        }
+      }
+
+      if (userToSave) {
+        statusMsg.innerText = "Success ✓ Redirecting...";
         if (asirnetBtn) asirnetBtn.innerText = "Redirecting...";
 
-        localStorage.setItem("token", data.token);
+        if (sessionToken) localStorage.setItem("token", sessionToken);
         localStorage.setItem("loginMethod", "asirnet_sso");
+        localStorage.setItem("userNex", JSON.stringify(userToSave));
 
-        const user = {
-          id: data.user.id,
-          username: data.user.username,
-          email: data.user.email,
-          bio: data.user.bio || "",
-          avatar: data.user.avatar || "",
-          cover_photo: data.user.cover_photo || ""
-        };
-
-
-        localStorage.setItem("userNex", JSON.stringify(user));
-
-        // SSO সফল হলে URL থেকে টোকেনটি মুছে ফেলা
+        // সিকিউরিটির জন্য URL পরিষ্কার করে দেওয়া
         window.history.replaceState({}, document.title, window.location.pathname);
 
         setTimeout(() => {
-     window.location.href = "nextalk.html";
+          window.location.href = "nextalk.html";
         }, 800);
-
       } else {
-        throw new Error(data.message || `Server responded with status ${res.status}`);
+        throw new Error("Unable to fetch user information");
       }
     }
   } catch (err) {
-    console.error("SSO Token Verification Error:", err);
+    console.error("SSO Authentication Error:", err);
     
     statusMsg.classList.remove("hidden");
     statusMsg.style.color = "#ff4d4d";
     statusMsg.style.borderColor = "rgba(255, 77, 77, 0.3)";
     statusMsg.style.background = "rgba(255, 77, 77, 0.1)";
-    statusMsg.innerText = err.message || "Server Connection Error / Server Sleeping";
+    statusMsg.innerText = err.message || "Authentication Failed / Connection Error";
 
     if (form) form.classList.remove("hidden");
     if (orDivider) orDivider.classList.remove("hidden");
@@ -464,8 +487,6 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
   }
 });
-
-
 
 form.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -481,65 +502,58 @@ form.addEventListener("submit", async (e) => {
     loginBtn.disabled = true;
     loginBtn.innerText = "Authenticating NexTalk...";
 
-try {
-    console.log(password);
-  // ১. URL ট্রিম করে ডাবল স্ল্যাশ রিমুভ করা
-  const cleanUrl = NEXTALK_SERVER_URL.replace(/\/+$/, "");
+    try {
+      const cleanUrl = NEXTALK_SERVER_URL.replace(/\/+$/, "");
 
-  const res = await fetch(`${cleanUrl}/signin`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ email, password })
-  });
+      const res = await fetch(`${cleanUrl}/signin`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
 
-  // ২. রেসপন্স Type চেক করা
-  const contentType = res.headers.get("content-type");
-  let data = {};
+      const contentType = res.headers.get("content-type");
+      let data = {};
 
-  if (contentType && contentType.includes("application/json")) {
-    data = await res.json();
-  } else {
-    // যদি HTML এরর পেজ আসে
-    const errorText = await res.text();
-    console.error("Server HTML Response:", errorText);
-    throw new Error(`Server returned non-JSON error status: ${res.status}`);
-  }
+      if (contentType && contentType.includes("application/json")) {
+        data = await res.json();
+      } else {
+        const errorText = await res.text();
+        console.error("Server HTML Response:", errorText);
+        throw new Error(`Server returned non-JSON error status: ${res.status}`);
+      }
 
-  if (!res.ok) {
-    alert(data.message || "Login failed");
-    loginBtn.disabled = false;
-    loginBtn.innerText = "Login";
-    return;
-  }
+      if (!res.ok) {
+        alert(data.message || "Login failed");
+        loginBtn.disabled = false;
+        loginBtn.innerText = "Login";
+        return;
+      }
 
-  // Success Logic
-  localStorage.setItem("token", data.token);
-  localStorage.setItem("loginMethod", "nextalk");
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("loginMethod", "nextalk");
 
-  const user = {
-    id: data.user.id,
-    username: data.user.username,
-    email: data.user.email,
-    bio: data.user.bio || "",
-    avatar: data.user.avatar || "",
-    cover_photo: data.user.cover_photo || ""
-  };
+      const user = {
+        id: data.user.id,
+        username: data.user.username,
+        email: data.user.email,
+        bio: data.user.bio || "",
+        avatar: data.user.avatar || "",
+        cover_photo: data.user.cover_photo || ""
+      };
 
-  localStorage.setItem("userNex", JSON.stringify(user));
+      localStorage.setItem("userNex", JSON.stringify(user));
 
-  loginBtn.innerText = "Success ✓";
+      loginBtn.innerText = "Success ✓";
 
-  setTimeout(() => {
-    window.location.href = "nextalk.html";
-  }, 800);
+      setTimeout(() => {
+        window.location.href = "nextalk.html";
+      }, 800);
 
-} catch (err) {
-  console.error("Signin Catch Error:", err);
-  alert("Network or Server error. Check browser console for details.");
-  loginBtn.disabled = false;
-  loginBtn.innerText = "Login";
+    } catch (err) {
+      console.error("Signin Catch Error:", err);
+      alert("Network or Server error. Check browser console for details.");
+      loginBtn.disabled = false;
+      loginBtn.innerText = "Login";
     }
 });
 
@@ -577,6 +591,48 @@ async function forgot() {
         alert("Server error");
     }
 }
+
+const endpoints = [
+    "https://users-server-xyvg.onrender.com/get/users",
+    "https://posts-server-kmha.onrender.com/get/posts",
+    "https://interacts-server-xpbo.onrender.com/get/interact",
+    "https://story-server-9d2k.onrender.com/get/story",
+    "https://nextalk-user-server.onrender.com/get/nextalk-users-server",
+"https://connection-server-9bzk.onrender.com/get/connection",
+"https://nextalk-9yw9.onrender.com/get/nextalk"
+];
+
+
+async function startServerPing() {
+
+    try {
+        const startTime = performance.now();
+
+        const responses = await Promise.all(
+            endpoints.map(url => 
+                fetch(url)
+                    .then(res => ({ url, status: res.status, ok: res.ok }))
+                    .catch(err => ({ url, ok: false, error: err.message }))
+            )
+        );
+
+        const duration = ((performance.now() - startTime) / 1000).toFixed(2);
+
+        responses.forEach(res => {
+            if (!res.ok) {
+                console.log(`❌ Failed: ${res.url} | Error: ${res.error || 'Bad Status'}`);
+            }
+        });
+
+    } catch (globalError) {
+        console.error("Critical error in ping cycle:", globalError);
+    } finally {
+        setTimeout(startServerPing, 5000);
+    }
+}
+
+startServerPing();
+
 </script>
 
 </body>
