@@ -625,7 +625,7 @@
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
-    // Update Message Status (Sending -> Sent / Error)
+    // Update Message Status (Sending Loader -> Sent Checkmark / Error)
     function updateMessageStatus(msgId, status) {
         const msgRow = document.getElementById(`msg-${msgId}`);
         if (!msgRow) return;
@@ -662,26 +662,30 @@
         };
         await saveLocalMessage(localMsgObj);
 
-        // ২. UI-তে সাথে সাথে দেখানো (Sending Status সহ)
+        // ২. UI-তে সাথে সাথে লোডার (Spinner) সহ দেখানো
         appendMessageUI(text, true, timestamp, tempMsgId, 'sending');
         input.value = '';
 
         // ৩. Socket.io দিয়ে রিয়েলটাইমে মেসেজ পাঠানো
-        try {
-            socket.emit("send_message", {
-                sender_id: myEmail,
-                receiver_id: friendEmail,
-                text: text,
-                media: null
-            });
+        let isSocketSent = false;
+        if (socket && socket.connected) {
+            try {
+                socket.emit("send_message", {
+                    sender_id: myEmail,
+                    receiver_id: friendEmail,
+                    text: text,
+                    media: null
+                });
+                isSocketSent = true;
+                // সকেটে সফলভাবে যাওয়ার পর Loader সরিয়ে Check Icon করে দেওয়া
+                updateMessageStatus(tempMsgId, 'sent');
+            } catch (err) {
+                console.error("Socket emit failed, using HTTP backup", err);
+            }
+        }
 
-            // সকেটে পাঠানো সফল হলে স্ট্যাটাস Sent করে দেওয়া
-            updateMessageStatus(tempMsgId, 'sent');
-
-        } catch (error) {
-            console.error("Socket send error, falling back to HTTP:", error);
-            
-            // সকেট ফেইল করলে ব্যাকআপ হিসেবে REST API দিয়ে ড্রাফটে পাঠানো
+        // ৪. সকেটে না গেলে HTTP Fallback (Bridge REST API)
+        if (!isSocketSent) {
             try {
                 const response = await fetch(`${BRIDGE_SERVER}/drafts`, {
                     method: 'POST',
