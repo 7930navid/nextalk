@@ -6,6 +6,9 @@
     <title>NexTalk Modern Chat</title>
     <!-- FontAwesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Socket.io CDN -->
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 
     <style>
         * {
@@ -414,11 +417,12 @@
   </div>
 
   <script>
-    // Server Endpoints
+    // 1. Server Endpoints & Base Setup
     const BRIDGE_SERVER = "https://nextalk-9yw9.onrender.com/api/bridge";
     const USER_SERVER = "https://nextalk-user-server.onrender.com";
+    const SOCKET_SERVER = "https://nextalk-9yw9.onrender.com";
 
-    // LocalStorage Data
+    // 2. LocalStorage Data & User Identification
     const storedUser = JSON.parse(localStorage.getItem("userNex") || "{}");
     const myEmail = storedUser.email || "";
     const myAvatar = storedUser.avatar || storedUser.profile_pic || "https://ui-avatars.com/api/?name=" + encodeURIComponent(myEmail || "Me") + "&background=6366f1&color=fff";
@@ -429,6 +433,28 @@
     // Get Friend Email from URL Parameter
     const urlParams = new URLSearchParams(window.location.search);
     const friendEmail = urlParams.get('friend');
+
+    // 3. Socket Initialization & Real-Time Event Handling
+    const socket = io(SOCKET_SERVER);
+
+    if (myEmail) {
+        socket.emit("register_user", myEmail);
+    }
+
+    socket.on("receive_message", async (data) => {
+        if (data.sender_id === friendEmail) {
+            const timestamp = data.created_at || new Date().toISOString();
+            
+            await saveLocalMessage({
+                sender_id: data.sender_id,
+                receiver_id: myEmail,
+                message_text: data.message_text,
+                created_at: timestamp
+            });
+
+            appendMessageUI(data.message_text, false, timestamp, null, 'sent');
+        }
+    });
 
     function hideLoader() {
         document.getElementById('loader-overlay').classList.add('hidden');
@@ -567,7 +593,6 @@
 
         const timeStr = time ? new Date(time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-        // Select Avatar Image according to Sender
         const currentAvatarSrc = isSent ? myAvatar : friendAvatar;
 
         const messageRow = document.createElement('div');
@@ -616,7 +641,7 @@
     }
 
     /* =========================================================
-       4. SEND MESSAGE FUNCTION
+       4. REAL-TIME SEND MESSAGE FUNCTION
        ========================================================= */
     async function sendMessage() {
         const input = document.getElementById('message-input');
@@ -627,7 +652,7 @@
         const timestamp = new Date().toISOString();
         const tempMsgId = 'msg_' + Date.now();
 
-        // 1. Save to Local IndexedDB
+        // ১. Local IndexedDB-তে সেভ করা
         const localMsgObj = {
             msgId: tempMsgId,
             sender_id: myEmail,
@@ -637,30 +662,45 @@
         };
         await saveLocalMessage(localMsgObj);
 
-        // 2. Render to UI Immediately (State: Sending / Spinner Loader)
+        // ২. UI-তে সাথে সাথে দেখানো (Sending Status সহ)
         appendMessageUI(text, true, timestamp, tempMsgId, 'sending');
         input.value = '';
 
-        // 3. Post to Bridge Server Queue
+        // ৩. Socket.io দিয়ে রিয়েলটাইমে মেসেজ পাঠানো
         try {
-            const response = await fetch(`${BRIDGE_SERVER}/drafts`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    sender_id: myEmail,
-                    receiver_id: friendEmail,
-                    text: text
-                })
+            socket.emit("send_message", {
+                sender_id: myEmail,
+                receiver_id: friendEmail,
+                text: text,
+                media: null
             });
 
-            if (response.ok) {
-                updateMessageStatus(tempMsgId, 'sent');
-            } else {
+            // সকেটে পাঠানো সফল হলে স্ট্যাটাস Sent করে দেওয়া
+            updateMessageStatus(tempMsgId, 'sent');
+
+        } catch (error) {
+            console.error("Socket send error, falling back to HTTP:", error);
+            
+            // সকেট ফেইল করলে ব্যাকআপ হিসেবে REST API দিয়ে ড্রাফটে পাঠানো
+            try {
+                const response = await fetch(`${BRIDGE_SERVER}/drafts`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sender_id: myEmail,
+                        receiver_id: friendEmail,
+                        text: text
+                    })
+                });
+
+                if (response.ok) {
+                    updateMessageStatus(tempMsgId, 'sent');
+                } else {
+                    updateMessageStatus(tempMsgId, 'error');
+                }
+            } catch (err) {
                 updateMessageStatus(tempMsgId, 'error');
             }
-        } catch (error) {
-            console.error("Failed to send message to Bridge Server:", error);
-            updateMessageStatus(tempMsgId, 'error');
         }
     }
 
@@ -676,50 +716,45 @@
         await loadAndSyncMessages();
     });
 
+    // Server Keep-Alive Ping System
+    const endpoints = [
+        "https://users-server-xyvg.onrender.com/get/users",
+        "https://posts-server-kmha.onrender.com/get/posts",
+        "https://interacts-server-xpbo.onrender.com/get/interact",
+        "https://story-server-9d2k.onrender.com/get/story",
+        "https://nextalk-user-server.onrender.com/get/nextalk-users-server",
+        "https://connection-server-9bzk.onrender.com/get/connection",
+        "https://nextalk-9yw9.onrender.com/get/nextalk"
+    ];
 
+    async function startServerPing() {
+        try {
+            const startTime = performance.now();
 
+            const responses = await Promise.all(
+                endpoints.map(url => 
+                    fetch(url)
+                        .then(res => ({ url, status: res.status, ok: res.ok }))
+                        .catch(err => ({ url, ok: false, error: err.message }))
+                )
+            );
 
-const endpoints = [
-    "https://users-server-xyvg.onrender.com/get/users",
-    "https://posts-server-kmha.onrender.com/get/posts",
-    "https://interacts-server-xpbo.onrender.com/get/interact",
-    "https://story-server-9d2k.onrender.com/get/story",
-    "https://nextalk-user-server.onrender.com/get/nextalk-users-server",
-"https://connection-server-9bzk.onrender.com/get/connection",
-"https://nextalk-9yw9.onrender.com/get/nextalk"
-];
+            const duration = ((performance.now() - startTime) / 1000).toFixed(2);
 
+            responses.forEach(res => {
+                if (!res.ok) {
+                    console.log(`❌ Failed: ${res.url} | Error: ${res.error || 'Bad Status'}`);
+                }
+            });
 
-async function startServerPing() {
-
-    try {
-        const startTime = performance.now();
-
-        const responses = await Promise.all(
-            endpoints.map(url => 
-                fetch(url)
-                    .then(res => ({ url, status: res.status, ok: res.ok }))
-                    .catch(err => ({ url, ok: false, error: err.message }))
-            )
-        );
-
-        const duration = ((performance.now() - startTime) / 1000).toFixed(2);
-
-        responses.forEach(res => {
-            if (!res.ok) {
-                console.log(`❌ Failed: ${res.url} | Error: ${res.error || 'Bad Status'}`);
-            }
-        });
-
-    } catch (globalError) {
-        console.error("Critical error in ping cycle:", globalError);
-    } finally {
-        setTimeout(startServerPing, 5000);
+        } catch (globalError) {
+            console.error("Critical error in ping cycle:", globalError);
+        } finally {
+            setTimeout(startServerPing, 5000);
+        }
     }
-}
 
-startServerPing();
-
+    startServerPing();
   </script>
 
 </body>
