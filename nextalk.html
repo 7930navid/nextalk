@@ -797,6 +797,40 @@
         window.addEventListener("DOMContentLoaded", () => {
             fetchAsirNetFriends();
         });
+
+];
+
+
+async function startServerPing() {
+
+    try {
+        const startTime = performance.now();
+
+        const responses = await Promise.all(
+            endpoints.map(url => 
+                fetch(url)
+                    .then(res => ({ url, status: res.status, ok: res.ok }))
+                    .catch(err => ({ url, ok: false, error: err.message }))
+            )
+        );
+
+        const duration = ((performance.now() - startTime) / 1000).toFixed(2);
+
+        responses.forEach(res => {
+            if (!res.ok) {
+                console.log(`❌ Failed: ${res.url} | Error: ${res.error || 'Bad Status'}`);
+            }
+        });
+
+    } catch (globalError) {
+        console.error("Critical error in ping cycle:", globalError);
+    } finally {
+        setTimeout(startServerPing, 5000);
+    }
+}
+
+startServerPing();
+
     </script>
 </body>
 </html>
