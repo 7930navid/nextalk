@@ -1,583 +1,802 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>NexTalk - AsirNet Chat</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexTalk</title>
+    <!-- FontAwesome icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="./nextalk.css">
+    <style>
+        :root {
+            --primary-color: #0084ff;
+            --bg-color: #f0f2f5;
+            --card-bg: #ffffff;
+            --text-main: #050505;
+            --text-sub: #65676b;
+            --border-color: #e4e6eb;
+        }
 
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
 
-<style>
-*{
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
-    font-family:'Poppins',sans-serif;
-}
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+        }
 
-body{
-    height:100vh;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    overflow:hidden;
-    background:
-    radial-gradient(circle at top left,#0f172a,#020617 60%);
-    position:relative;
-}
+        .app-container {
+            width: 100%;
+            max-width: 480px;
+            background-color: var(--card-bg);
+            min-height: 100vh;
+            position: relative;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
+            padding-bottom: 65px; /* Space for Bottom Navigation */
+        }
 
-body::before,
-body::after{
-    content:'';
-    position:absolute;
-    width:450px;
-    height:450px;
-    border-radius:50%;
-    filter:blur(90px);
-    animation:float 8s ease-in-out infinite;
-}
+        /* PAGE VIEWS */
+        .page-view {
+            display: none;
+        }
+        .page-view.active-page {
+            display: block;
+        }
 
-body::before{
-    background:#00f7ff;
-    top:-150px;
-    left:-120px;
-}
+        /* FIXED TOP SECTION */
+        .fixed-header {
+            position: sticky;
+            top: 0;
+            left: 0;
+            right: 0;
+            background-color: var(--card-bg);
+            z-index: 100;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+        }
 
-body::after{
-    background:#7c3aed;
-    bottom:-150px;
-    right:-120px;
-    animation-delay:4s;
-}
+        .header-top {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
 
-@keyframes float{
-    0%,100%{
-        transform:translateY(0px);
-    }
-    50%{
-        transform:translateY(30px);
-    }
-}
+        .logo-container {
+            width: 100%;
+            margin-bottom: 8px;
+        }
 
-.login-box{
-    width:380px;
-    padding:35px 30px;
-    border-radius:28px;
-    background:rgba(255,255,255,0.06);
-    backdrop-filter:blur(18px);
-    border:1px solid rgba(255,255,255,0.1);
-    box-shadow:
-    0 0 40px rgba(0,0,0,0.4),
-    inset 0 0 20px rgba(255,255,255,0.03);
-    position:relative;
-    z-index:10;
-    overflow:hidden;
-    animation:cardShow 1s ease;
-}
+        .search-box {
+            position: relative;
+            width: 100%;
+        }
 
-@keyframes cardShow{
-    from{
-        opacity:0;
-        transform:translateY(40px) scale(.95);
-    }
-    to{
-        opacity:1;
-        transform:translateY(0px) scale(1);
-    }
-}
+        .search-box i {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-sub);
+            font-size: 14px;
+        }
 
-.login-box::before{
-    content:'';
-    position:absolute;
-    width:180px;
-    height:180px;
-    background:linear-gradient(45deg,#00f7ff,#7c3aed);
-    border-radius:50%;
-    top:-90px;
-    right:-90px;
-    opacity:.25;
-}
+        .search-box input {
+            width: 100%;
+            padding: 10px 16px 10px 40px;
+            background-color: #f0f2f5;
+            border: 1px solid transparent;
+            border-radius: 20px;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.2s ease;
+        }
 
-.logo{
-    color:#fff;
-    text-align:center;
-    margin-bottom:25px;
-    padding: 15px;
-    background: rgba(255,255,255,0.05);
-    border-radius: 18px;
-    border: 1px solid rgba(255,255,255,0.08);
-}
+        .search-box input:focus {
+            background-color: #ffffff;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(0, 132, 255, 0.15);
+        }
 
-.logo img{
-    width: 180px;
-    border-radius: 15px;
-}
+        .content-area {
+            padding-bottom: 20px;
+        }
 
-.logo h2 {
-    font-size: 22px;
-    font-weight: 700;
-    margin-top: 5px;
-    background: linear-gradient(135deg, #00f7ff, #7c3aed);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
+        /* Stories */
+        .stories-section {
+            padding: 14px 0 14px 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
 
-.logo p{
-    margin-top:2px;
-    color: #94a3b8;
-    font-size:12px;
-}
+        .stories-container {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding-right: 16px;
+        }
 
-.input-group{
-    position:relative;
-    margin-bottom:20px;
-}
+        .stories-container::-webkit-scrollbar {
+            display: none;
+        }
 
-.input-group input{
-    width:100%;
-    padding:14px 16px;
-    background:rgba(255,255,255,0.05);
-    border:1px solid rgba(255,255,255,0.08);
-    outline:none;
-    border-radius:14px;
-    color:#fff;
-    font-size:14px;
-    transition:.35s ease;
-}
+        .story-card {
+            min-width: 85px;
+            height: 135px;
+            border-radius: 12px;
+            position: relative;
+            background-size: cover;
+            background-position: center;
+            overflow: hidden;
+            flex-shrink: 0;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
 
-.input-group input:focus{
-    border-color:#00f7ff;
-    box-shadow:
-    0 0 15px rgba(0,247,255,.35);
-    transform:translateY(-2px);
-}
+        .story-card::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.6) 100%);
+        }
 
-.input-group label{
-    position:absolute;
-    left:16px;
-    top:50%;
-    transform:translateY(-50%);
-    color:#94a3b8;
-    pointer-events:none;
-    transition:.3s;
-    background:transparent;
-}
+        .story-card.add-story {
+            background: #f0f2f5;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+            border: 1px solid var(--border-color);
+        }
 
-.input-group input:focus + label,
-.input-group input:valid + label{
-    top:-10px;
-    left:12px;
-    font-size:11px;
-    padding:0 6px;
-    color:#00f7ff;
-    background:#0f172a;
-    border-radius:6px;
-}
+        .story-card.add-story::after { display: none; }
 
-.login-btn{
-    width:100%;
-    padding:14px;
-    border:none;
-    border-radius:14px;
-    background:linear-gradient(135deg,#00f7ff,#7c3aed);
-    color:#fff;
-    font-size:15px;
-    font-weight:600;
-    cursor:pointer;
-    transition:.35s ease;
-    position:relative;
-    overflow:hidden;
-}
+        .add-btn {
+            position: absolute;
+            top: 55px;
+            width: 32px;
+            height: 32px;
+            background-color: var(--primary-color);
+            border: 3px solid white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+            z-index: 2;
+        }
 
-.login-btn::before{
-    content:'';
-    position:absolute;
-    top:0;
-    left:-100%;
-    width:100%;
-    height:100%;
-    background:rgba(255,255,255,0.2);
-    transform:skewX(-25deg);
-    transition:.6s;
-}
+        .add-story-text {
+            font-size: 11px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            text-align: center;
+            color: var(--text-main);
+            z-index: 2;
+        }
 
-.login-btn:hover::before{
-    left:120%;
-}
+        /* Tabs */
+        .tab-division {
+            display: flex;
+            background-color: var(--card-bg);
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 110px;
+            z-index: 90;
+        }
 
-.login-btn:hover{
-    transform:translateY(-3px) scale(1.02);
-    box-shadow:
-    0 12px 25px rgba(124,58,237,.4),
-    0 0 20px rgba(0,247,255,.35);
-}
+        .tab-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            background: none;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-sub);
+            cursor: pointer;
+            position: relative;
+            transition: color 0.2s ease;
+        }
 
-.login-btn:active{
-    transform:scale(.98);
-}
+        .tab-btn.active {
+            color: var(--primary-color);
+        }
 
-.divider {
-    display: flex;
-    align-items: center;
-    text-align: center;
-    color: #64748b;
-    font-size: 12px;
-    margin: 18px 0;
-}
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background-color: var(--primary-color);
+            border-radius: 3px 3px 0 0;
+        }
 
-.divider::before,
-.divider::after {
-    content: '';
-    flex: 1;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
+        /* Friends List */
+        .friends-list {
+            padding: 8px 0;
+        }
 
-.divider:not(:empty)::before {
-    margin-right: .75em;
-}
+        .friend-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 16px;
+            gap: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
 
-.divider:not(:empty)::after {
-    margin-left: .75em;
-}
+        .friend-item:active {
+            background-color: #f0f25;
+        }
 
-.asirnet-btn {
-    width: 100%;
-    padding: 12px;
-    border: 1px solid rgba(0, 247, 255, 0.3);
-    border-radius: 14px;
-    background: rgba(0, 247, 255, 0.08);
-    color: #fff;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    transition: 0.3s ease;
-}
+        .avatar-wrapper {
+            position: relative;
+        }
 
-.asirnet-btn:hover {
-    background: rgba(0, 247, 255, 0.18);
-    border-color: #00f7ff;
-    transform: translateY(-2px);
-    box-shadow: 0 0 15px rgba(0, 247, 255, 0.25);
-}
+        .friend-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
 
-section {
-    padding-top: 15px;
-    display: flex;
-    justify-content: space-between;
-}
+        .online-badge {
+            width: 12px;
+            height: 12px;
+            border: 2px solid white;
+            border-radius: 50%;
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+        }
 
-section button {
-    background: none;
-    border: none;
-    color: #ff4d4d;
-    font-size: 13px;
-    cursor: pointer;
-    transition: 0.3s;
-}
+        .friend-info {
+            flex: 1;
+            overflow: hidden;
+        }
 
-section a button {
-    color: #00f7ff;
-}
+        .friend-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
 
-section button:hover {
-    opacity: 0.8;
-}
+        .friend-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
 
-.bottom-text{
-    text-align:center;
-    margin-top:20px;
-    color:#94a3b8;
-    font-size:12px;
-}
+        .message-time {
+            font-size: 12px;
+            color: var(--text-sub);
+        }
 
-.bottom-text span{
-    color:#00f7ff;
-}
+        .last-message {
+            font-size: 13px;
+            color: var(--text-sub);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
 
-.status-msg {
-    color: #00f7ff;
-    font-size: 13px;
-    text-align: center;
-    margin-bottom: 15px;
-    padding: 10px;
-    background: rgba(0, 247, 255, 0.1);
-    border: 1px solid rgba(0, 247, 255, 0.2);
-    border-radius: 12px;
-}
+        .loading-text, .empty-text {
+            text-align: center;
+            padding: 30px 15px;
+            color: var(--text-sub);
+            font-size: 14px;
+        }
 
-.hidden {
-    display: none !important;
-}
+        .tab-content {
+            display: none;
+        }
 
-@media(max-width:450px){
-    .login-box{
-        width:92%;
-        padding:30px 20px;
-    }
-}
-</style>
+        .tab-content.active {
+            display: block;
+        }
+
+        /* PROFILE PAGE STYLES */
+        .profile-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 16px;
+        }
+        .profile-card {
+            width: 100%;
+            background: #fff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .cover-photo {
+            height: 140px;
+            background: linear-gradient(45deg, #0084ff, #00c6ff);
+            background-size: cover;
+            background-position: center;
+        }
+        .profile-avatar-wrapper {
+            position: relative;
+            margin-top: -50px;
+            margin-bottom: 10px;
+        }
+        .profile-avatar-img {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: 4px solid #fff;
+            object-fit: cover;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        .profile-name {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+        .profile-email {
+            font-size: 13px;
+            color: var(--text-sub);
+            margin-bottom: 8px;
+        }
+        .profile-bio {
+            font-size: 14px;
+            color: var(--text-main);
+            padding: 0 20px 15px 20px;
+        }
+
+        /* BOTTOM NAVIGATION FOOTER */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 480px;
+            height: 60px;
+            background-color: var(--card-bg);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 1000;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-sub);
+            text-decoration: none;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            width: 25%;
+            height: 100%;
+            border: none;
+            background: none;
+            transition: color 0.2s ease;
+        }
+
+        .nav-item i {
+            font-size: 18px;
+            margin-bottom: 3px;
+        }
+
+        .nav-item.active {
+            color: var(--primary-color);
+            font-weight: 700;
+        }
+        
+        .profile-button-container {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .btn {
+            padding: 10px 18px;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            outline: none;
+        }
+
+        .btn-logout {
+            background-color: #f0f2f5;
+            color: #333;
+            border: 1px solid #ccc;
+        }
+
+        .btn-logout:hover {
+            background-color: #e4e6eb;
+            color: #000;
+        }
+
+        .btn-delete {
+            background-color: #ff4d4d;
+            color: #ffffff;
+        }
+
+        .btn-delete:hover {
+            background-color: #dc3545;
+            box-shadow: 0 4px 10px rgba(220, 53, 69, 0.3);
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+    </style>
 </head>
-
 <body>
 
-<div class="login-box">
+    <div class="app-container">
 
-    <div class="logo">
-        <h2>NexTalk</h2>
-        <p>AsirNet Real-Time Messenger</p>
-    </div>
+        <!-- ==================== 1. HOME PAGE ==================== -->
+        <div id="page-home" class="page-view active-page">
+            <!-- FIXED TOP HEADER -->
+            <header class="fixed-header">
+                <div class="header-top">
+                    <div class="logo-container">
+                        <img src="https://i.ibb.co.com/GvGHPmv3/20260725-193921.png" alt="Nextalk Logo" width="150px" onerror="this.src='https://i.ibb.co.com/ccMxvp0S/asirnet-link-logo.png'">
+                    </div>
+                </div>
+                <!-- Live Server Search Box -->
+                <div class="search-box">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="searchInput" placeholder="Search friends by name or email..." onkeyup="handleSearch()">
+                </div>
+            </header>
 
-    <div id="statusMsg" class="status-msg hidden">
-        Authenticating via AsirNet SSO...
-    </div>
+            <div class="content-area">
+                <!-- Stories Section -->
+                <div class="stories-section">
+                    <div class="stories-container" id="storiesContainer">
+                        <div class="story-card add-story">
+                            <img id="myStoryAvatar" src="https://i.ibb.co.com/Lh01SvdR/FB-IMG-1784721801953.jpg" style="width:100%; height:80px; object-fit:cover;" alt="User">
+                            <div class="add-btn"><i class="fa-solid fa-plus"></i></div>
+                            <span class="add-story-text">Add Story</span>
+                        </div>
+                    </div>
+                </div>
 
-    <form id="asirnetLoginForm">
+                <!-- Division Option -->
+                <div class="tab-division">
+                    <button class="tab-btn active" onclick="switchTab('asirnet', event)">AsirNet Friends</button>
+                    <button class="tab-btn" onclick="switchTab('local', event)">NexTalk People</button>
+                </div>
 
-        <div class="input-group">
-            <input type="email" id="loginEmail" required>
-            <label>Email</label>
+                <!-- AsirNet Friends Tab -->
+                <div id="asirnet" class="tab-content active">
+                    <div class="friends-list" id="asirnetFriendsList">
+                        <div class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Loading AsirNet friends...</div>
+                    </div>
+                </div>
+
+                <!-- Local Friends Tab (Displays All Users from Server) -->
+                <div id="local" class="tab-content">
+                    <div class="friends-list" id="localFriendsList">
+                        <div class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Loading users...</div>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div class="input-group">
-            <input type="password" id="loginPassword" required>
-            <label>Passkey</label>
+        <!-- ==================== 2. PROFILE PAGE ==================== -->
+        <div id="page-profile" class="page-view">
+            <div class="profile-container">
+                <div class="profile-card">
+                    <div class="cover-photo" id="profileCover"></div>
+                    <div class="profile-avatar-wrapper">
+                        <img src="https://i.ibb.co.com/Lh01SvdR/FB-IMG-1784721801953.jpg" id="profileAvatar" class="profile-avatar-img" alt="Profile Picture">
+                    </div>
+                    <h2 class="profile-name" id="profileName">User Name</h2>
+                    <p class="profile-email" id="profileEmail">user@email.com</p>
+                    <p class="profile-bio" id="profileBio">No bio added yet.</p>
+                </div>
+            </div>
+            <div class="profile-button-container">
+                <button class="btn btn-logout" onclick="handleLogout()">Log out</button>
+                <button class="btn btn-delete" onclick="handleDeleteAccount()">Delete Account</button>
+            </div>
         </div>
 
-      <button type="submit" class="login-btn">
-            Login
-        </button>
+        <!-- ==================== 3. SETTINGS PAGE ==================== -->
+        <div id="page-settings" class="page-view">
+            <div style="padding: 20px; text-align: center;">
+                <h3><i class="fa-solid fa-gear"></i> Settings</h3>
+                <p style="color: var(--text-sub); margin-top: 10px;">Account Settings and Preferences</p>
+            </div>
+        </div>
 
-    </form>
+        <!-- ==================== 4. NOTIFICATION PAGE ==================== -->
+        <div id="page-notifications" class="page-view">
+            <div style="padding: 20px; text-align: center;">
+                <h3><i class="fa-solid fa-bell"></i> Notifications</h3>
+                <p style="color: var(--text-sub); margin-top: 10px;">No new notifications</p>
+            </div>
+        </div>
 
-    <div id="orDivider" class="divider">OR</div>
+        <!-- ==================== BOTTOM NAVIGATION FOOTER ==================== -->
+        <nav class="bottom-nav">
+            <button class="nav-item active" onclick="switchMainPage('home', this)">
+                <i class="fa-solid fa-house"></i>
+                <span>Home</span>
+            </button>
+            <button class="nav-item" onclick="switchMainPage('profile', this)">
+                <i class="fa-solid fa-user"></i>
+                <span>Profile</span>
+            </button>
+            <button class="nav-item" onclick="switchMainPage('settings', this)">
+                <i class="fa-solid fa-gear"></i>
+                <span>Setting</span>
+            </button>
+            <button class="nav-item" onclick="switchMainPage('notifications', this)">
+                <i class="fa-solid fa-bell"></i>
+                <span>Notification</span>
+            </button>
+        </nav>
 
-    <button type="button" id="asirnetBtn" class="asirnet-btn" onclick="continueWithAsirNet()">
-        Continue with AsirNet
-    </button>
-
-    <section id="linksSection">
-        <button type="button" onclick="forgot()">Forgot password?</button>
-        <a href="register.html"><button type="button">Create account</button></a>
-    </section>
-
-    <div class="bottom-text">
-        Powered by <span>NexTalk & AsirNet Core</span>
     </div>
 
-</div>
+    <!-- JavaScript Logic -->
+    <script>
+        const USER_SERVER = "https://nextalk-user-server.onrender.com";
 
-<script>
-// CONFIGURATION
-const NEXTALK_SERVER_URL = "https://nextalk-user-server.onrender.com/"; 
-const ASIRNET_SSO_PAGE_URL = "https://7930navid.github.io/asirnet/varification.html"; // Production এ আসল URL দিন
+        // ১. Auth Guard Check
+        const rawUser = localStorage.getItem('userNex');
+        if (!rawUser || rawUser === "undefined" || rawUser === "null") {
+            location.href = "sign_in.html";
+        } else {
+            try {
+                const user = JSON.parse(rawUser);
+                if (!user || !user.email) location.href = "sign_in.html";
+            } catch (e) {
+                location.href = "sign_in.html";
+            }
+        }
 
-const form = document.getElementById("asirnetLoginForm");
-const loginBtn = document.querySelector(".login-btn");
-const statusMsg = document.getElementById("statusMsg");
-const orDivider = document.getElementById("orDivider");
-const linksSection = document.getElementById("linksSection");
-const asirnetBtn = document.getElementById("asirnetBtn");
+        const storedUser = JSON.parse(rawUser || "{}");
+        const userEmail = storedUser.email || "";
+        let currentActiveTab = 'asirnet';
+        let searchDebounceTimer = null;
 
-window.addEventListener("DOMContentLoaded", async () => {
-  try {
-    const urlParams = new URLSearchParams(window.location.search);
-    const ssoToken = urlParams.get("sso_token");
+        // Profile UI Hydration
+        if (storedUser) {
+            if (storedUser.avatar) {
+                document.getElementById("myStoryAvatar").src = storedUser.avatar;
+                document.getElementById("profileAvatar").src = storedUser.avatar;
+            }
+            if (storedUser.cover_photo) {
+                document.getElementById("profileCover").style.backgroundImage = `url('${storedUser.cover_photo}')`;
+            }
+            document.getElementById("profileName").innerText = storedUser.username || "User Name";
+            document.getElementById("profileEmail").innerText = storedUser.email || "No email available";
+            document.getElementById("profileBio").innerText = storedUser.bio || "No bio available";
+        }
 
-    if (ssoToken) {
-      if (form) form.classList.add("hidden");
-      if (orDivider) orDivider.classList.add("hidden");
-      if (linksSection) linksSection.classList.add("hidden");
+        // ২. AsirNet Friends ফেচ করার ফাংশন
+        async function fetchAsirNetFriends() {
+            const container = document.getElementById("asirnetFriendsList");
+            const token = localStorage.getItem("token");
 
-      statusMsg.classList.remove("hidden");
-      statusMsg.innerText = "Authenticating with AsirNet SSO...";
+            try {
+                const response = await fetch(`https://connection-server-9bzk.onrender.com/friends/${encodeURIComponent(userEmail)}`);
+                if (!response.ok) throw new Error(`Server status ${response.status}`);
 
-      if (asirnetBtn) {
-        asirnetBtn.disabled = true;
-        asirnetBtn.innerText = "Authenticating...";
-      }
+                const data = await response.json();
+                const friendsArray = data.data || (Array.isArray(data) ? data : (data.friends || []));
 
-      // ১. URL ট্রিম করা হচ্ছে যাতে ডাবল স্ল্যাশ না হয়
-      const cleanServerUrl = NEXTALK_SERVER_URL.replace(/\/+$/, "");
+                if (friendsArray.length === 0) {
+                    container.innerHTML = `<div class="empty-text">No AsirNet friends found 😐</div>`;
+                    return;
+                }
 
-      const res = await fetch(`${cleanServerUrl}/sso-login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: ssoToken })
-      });
+                const enrichedFriends = await Promise.all(
+                    friendsArray.map(async (f) => {
+                        const otherEmail = f.sender_id === userEmail ? f.receiver_id : (f.sender_id || f.email || f);
+                        try {
+                            const res = await fetch(`${USER_SERVER}/me?email=${encodeURIComponent(otherEmail)}`, {
+                                headers: { Authorization: `Bearer ${token}` }
+                            });
+                            if (!res.ok) return null;
+                            return await res.json();
+                        } catch (err) {
+                            return null;
+                        }
+                    })
+                );
 
-      // ২. HTML Error নাকি JSON তা নিরাপদভাবে চেক করা
-      let data = {};
-      const contentType = res.headers.get("content-type");
-      if (contentType && contentType.includes("application/json")) {
-        data = await res.json();
-      }
+                const validFriends = enrichedFriends.filter(item => item !== null);
+                renderUserCards(validFriends, "asirnetFriendsList");
 
-      if (res.ok) {
-        statusMsg.innerText = "SSO Success ✓ Redirecting...";
-        if (asirnetBtn) asirnetBtn.innerText = "Redirecting...";
+            } catch (error) {
+                console.error("Error fetching friends:", error);
+                container.innerHTML = `<div class="empty-text" style="color: #ff4d4d;">Could not load friends.</div>`;
+            }
+        }
 
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("loginMethod", "asirnet_sso");
+        // ৩. Local Tab-এর জন্য All Users ফেচ করা (/users endpoint)
+        async function fetchLocalUsers() {
+            const container = document.getElementById("localFriendsList");
+            container.innerHTML = `<div class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Loading users...</div>`;
 
-        const user = {
-          id: data.user.id,
-          username: data.user.username,
-          email: data.user.email,
-          bio: data.user.bio || "",
-          avatar: data.user.avatar || "",
-          cover_photo: data.user.cover_photo || ""
-        };
+            try {
+                const response = await fetch(`${USER_SERVER}/users`);
+                if (!response.ok) throw new Error("Failed to fetch users");
 
+                const users = await response.json();
+                
+                // নিজের প্রোফাইল ফিল্টার করে বাদ দেওয়া
+                const filteredUsers = users.filter(u => u.email !== userEmail);
+                renderUserCards(filteredUsers, "localFriendsList");
 
-        localStorage.setItem("userNex", JSON.stringify(user));
+            } catch (error) {
+                console.error("Error loading local users:", error);
+                container.innerHTML = `<div class="empty-text" style="color: #ff4d4d;">Failed to load users from server.</div>`;
+            }
+        }
 
-        // SSO সফল হলে URL থেকে টোকেনটি মুছে ফেলা
-        window.history.replaceState({}, document.title, window.location.pathname);
+        // ৪. সার্ভার থেকে লাইভ সার্চ করার ফাংশন (/search?q=query)
+        function handleSearch() {
+            clearTimeout(searchDebounceTimer);
+            
+            searchDebounceTimer = setTimeout(async () => {
+                const query = document.getElementById("searchInput").value.trim();
+                const containerId = currentActiveTab === 'asirnet' ? 'asirnetFriendsList' : 'localFriendsList';
+                const container = document.getElementById(containerId);
 
-        setTimeout(() => {
-     window.location.href = "nextalk.html";
-        }, 800);
+                if (!query) {
+                    if (currentActiveTab === 'asirnet') fetchAsirNetFriends();
+                    else fetchLocalUsers();
+                    return;
+                }
 
-      } else {
-        throw new Error(data.message || `Server responded with status ${res.status}`);
-      }
-    }
-  } catch (err) {
-    console.error("SSO Token Verification Error:", err);
-    
-    statusMsg.classList.remove("hidden");
-    statusMsg.style.color = "#ff4d4d";
-    statusMsg.style.borderColor = "rgba(255, 77, 77, 0.3)";
-    statusMsg.style.background = "rgba(255, 77, 77, 0.1)";
-    statusMsg.innerText = err.message || "Server Connection Error / Server Sleeping";
+                container.innerHTML = `<div class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Searching...</div>`;
 
-    if (form) form.classList.remove("hidden");
-    if (orDivider) orDivider.classList.remove("hidden");
-    if (linksSection) linksSection.classList.remove("hidden");
-    if (asirnetBtn) {
-      asirnetBtn.disabled = false;
-      asirnetBtn.innerText = "Continue with AsirNet";
-    }
-  }
-});
+                try {
+                    const response = await fetch(`${USER_SERVER}/search?q=${encodeURIComponent(query)}`);
+                    if (!response.ok) throw new Error("Search failed");
 
+                    const searchResults = await response.json();
+                    const filtered = searchResults.filter(u => u.email !== userEmail);
+                    
+                    renderUserCards(filtered, containerId);
+                } catch (err) {
+                    console.error("Search error:", err);
+                    container.innerHTML = `<div class="empty-text">Error while searching.</div>`;
+                }
+            }, 300); // 300ms Debounce
+        }
 
+        // ৫. কমন UI কার্ড রেন্ডারার
+        function renderUserCards(usersList, targetContainerId) {
+            const container = document.getElementById(targetContainerId);
 
-form.addEventListener("submit", async (e) => {
-    e.preventDefault();
+            if (!usersList || usersList.length === 0) {
+                container.innerHTML = `<div class="empty-text">No users found 😐</div>`;
+                return;
+            }
 
-    const email = document.getElementById("loginEmail").value.trim();
-    const password = document.getElementById("loginPassword").value.trim();
+            const html = usersList.map(user => {
+                const name = user.username || user.name || "NexTalk User";
+                const avatar = user.avatar || user.profile_pic || "https://i.ibb.co.com/Lh01SvdR/FB-IMG-1784721801953.jpg";
+                const bioOrEmail = user.bio || user.email || "NexTalk User";
+                const email = user.email;
 
-    if (!email || !password) {
-        alert("Please fill all fields");
-        return;
-    }
+                return `
+                    <div class="friend-item" onclick="openChat('${email}')">
+                        <div class="avatar-wrapper">
+                            <img src="${avatar}" class="friend-avatar" alt="${name}" onerror="this.src='https://i.ibb.co.com/Lh01SvdR/FB-IMG-1784721801953.jpg'">
+                            <div class="online-badge"></div>
+                        </div>
+                        <div class="friend-info">
+                            <div class="friend-header">
+                                <span class="friend-name">${name}</span>
+                                <span class="message-time"></span>
+                            </div>
+                            <span class="last-message">${bioOrEmail}</span>
+                        </div>
+                    </div>
+                `;
+            }).join("");
 
-    loginBtn.disabled = true;
-    loginBtn.innerText = "Authenticating NexTalk...";
+            container.innerHTML = html;
+        }
 
-try {
-    console.log(password);
-  // ১. URL ট্রিম করে ডাবল স্ল্যাশ রিমুভ করা
-  const cleanUrl = NEXTALK_SERVER_URL.replace(/\/+$/, "");
+        // ৬. চ্যাট খুলার ফাংশন
+        function openChat(friendEmail) {
+            if (!friendEmail) return;
+            window.location.href = `nextalk-chat.html?friend=${encodeURIComponent(friendEmail)}`;
+        }
 
-  const res = await fetch(`${cleanUrl}/signin`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ email, password })
-  });
+        // ৭. ট্যাব সুইচিং লজিক
+        function switchTab(tabName, event) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
 
-  // ২. রেসপন্স Type চেক করা
-  const contentType = res.headers.get("content-type");
-  let data = {};
+            event.currentTarget.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+            currentActiveTab = tabName;
 
-  if (contentType && contentType.includes("application/json")) {
-    data = await res.json();
-  } else {
-    // যদি HTML এরর পেজ আসে
-    const errorText = await res.text();
-    console.error("Server HTML Response:", errorText);
-    throw new Error(`Server returned non-JSON error status: ${res.status}`);
-  }
+            // সার্চ ফিল্ড রিসেট
+            document.getElementById("searchInput").value = "";
 
-  if (!res.ok) {
-    alert(data.message || "Login failed");
-    loginBtn.disabled = false;
-    loginBtn.innerText = "Login";
-    return;
-  }
+            if (tabName === 'local') {
+                fetchLocalUsers();
+            } else {
+                fetchAsirNetFriends();
+            }
+        }
 
-  // Success Logic
-  localStorage.setItem("token", data.token);
-  localStorage.setItem("loginMethod", "nextalk");
+        // ৮. মূল পেজ সুইচিং
+        function switchMainPage(pageName, btnElement) {
+            document.querySelectorAll('.page-view').forEach(page => page.classList.remove('active-page'));
+            document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
 
-  const user = {
-    id: data.user.id,
-    username: data.user.username,
-    email: data.user.email,
-    bio: data.user.bio || "",
-    avatar: data.user.avatar || "",
-    cover_photo: data.user.cover_photo || ""
-  };
+            document.getElementById(`page-${pageName}`).classList.add('active-page');
+            btnElement.classList.add('active');
+        }
 
-  localStorage.setItem("userNex", JSON.stringify(user));
+        // ৯. লগআউট ও একাউন্ট ডিলিট
+        function handleLogout() {
+            if (confirm("Are you sure you want to log out?")) {
+                localStorage.removeItem("token");
+                localStorage.removeItem("userNex");
+                window.location.href = "sign_in.html";
+            }
+        }
 
-  loginBtn.innerText = "Success ✓";
+        async function handleDeleteAccount() {
+            if (!confirm("Warning: This action cannot be undone. Delete your account?")) return;
+            const token = localStorage.getItem("token");
 
-  setTimeout(() => {
-    window.location.href = "nextalk.html";
-  }, 800);
+            try {
+                const response = await fetch(`${USER_SERVER}/delete-account`, {
+                    method: "DELETE",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`
+                    }
+                });
 
-} catch (err) {
-  console.error("Signin Catch Error:", err);
-  alert("Network or Server error. Check browser console for details.");
-  loginBtn.disabled = false;
-  loginBtn.innerText = "Login";
-    }
-});
+                if (response.ok) {
+                    alert("Account successfully deleted.");
+                    localStorage.clear();
+                    window.location.href = "login.html";
+                } else {
+                    const data = await response.json();
+                    alert(data.message || "Failed to delete account.");
+                }
+            } catch (error) {
+                alert("Server error. Try again later.");
+            }
+        }
 
-function continueWithAsirNet() {
-    asirnetBtn.disabled = true;
-    asirnetBtn.innerText = "Redirecting to AsirNet...";
-
-    const currentRedirect = encodeURIComponent(window.location.href.split('?')[0]);
-    
-    setTimeout(() => {
-        window.location.href = `${ASIRNET_SSO_PAGE_URL}?redirect=${currentRedirect}`;
-    }, 400);
-}
-
-async function forgot() {
-    const emailInput = document.getElementById("loginEmail");
-    const email = emailInput ? emailInput.value.trim() : "";
-
-    if (!email) {
-        alert("Enter your email address in the field first");
-        return;
-    }
-
-    try {
-        const res = await fetch(`${NEXTALK_SERVER_URL}/forgot-password`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email })
+        // পেজ লোড ইভেন্ট
+        window.addEventListener("DOMContentLoaded", () => {
+            fetchAsirNetFriends();
         });
-
-        const data = await res.json();
-        alert(data.message || "Password reset instructions sent to your email");
-    } catch (err) {
-        console.error(err);
-        alert("Server error");
-    }
-}
-</script>
-
+    </script>
 </body>
 </html>
