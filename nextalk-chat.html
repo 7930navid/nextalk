@@ -28,7 +28,7 @@
             overflow: hidden;
         }
 
-        /* LOADER OVERLAY */
+        /* MAIN LOADER OVERLAY */
         #loader-overlay {
             display: flex;
             justify-content: center;
@@ -110,6 +110,33 @@
 
         @keyframes spinX { 100% { transform: rotate(360deg); } }
         @keyframes spinY { 100% { transform: rotate(-360deg); } }
+
+        /* ACTION LOADER OVERLAY (for edit/delete operations) */
+        #action-loader {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 9998;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #action-loader.active {
+            display: flex;
+        }
+
+        .action-loader-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #6366f1;
+            border-radius: 50%;
+            animation: spinX 1s linear infinite;
+        }
 
         .chat-card {
             width: 100%;
@@ -258,7 +285,7 @@
             border-bottom-right-radius: 4px;
         }
 
-        /* LONG PRESS DROPDOWN MENU STYLES */
+        /* DROPDOWN MENU */
         .msg-dropdown {
             display: none;
             position: absolute;
@@ -329,7 +356,8 @@
 
         .msg-status .fa-spinner { font-size: 10px; animation: spinMsg 1s linear infinite; }
         .msg-status .fa-check { color: #38bdf8; }
-        .msg-status .fa-circle-exclamation { color: #f87171; }
+        .msg-status .fa-check-double { color: #38bdf8; }
+        .msg-status .fa-circle-exclamation { color: #f87171; font-weight: bold; font-size: 12px; }
 
         @keyframes spinMsg { 100% { transform: rotate(360deg); } }
 
@@ -403,11 +431,16 @@
         }
 
         .empty-chat { text-align: center; color: #94a3b8; font-size: 13px; margin: auto 0; }
+
+        .message.action-in-progress {
+            opacity: 0.6;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
 
-  <!-- LOADER OVERLAY -->
+  <!-- MAIN LOADER OVERLAY -->
   <div id="loader-overlay">
     <div class="loader-container">
         <div class="loader-wrapper">
@@ -417,7 +450,12 @@
         </div>
         <div class="loader-text">Loading Chat...</div>    
     </div>
-  </div>  
+  </div>
+
+  <!-- ACTION LOADER (for edit/delete operations) -->
+  <div id="action-loader">
+    <div class="action-loader-spinner"></div>
+  </div>
 
   <!-- CHAT INTERFACE -->
   <div class="chat-card">
@@ -482,14 +520,22 @@
     const socket = io(SOCKET_SERVER);
     if (myEmail) socket.emit("register_user", myEmail);
 
+    function showActionLoader() {
+        document.getElementById('action-loader').classList.add('active');
+    }
+
+    function hideActionLoader() {
+        document.getElementById('action-loader').classList.remove('active');
+    }
+
     /* =========================================================
-       SOCKET LISTENERS
+       SOCKET LISTENERS (RECEIVER FLOW)
        ========================================================= */
     socket.on("receive_message", async (data) => {
         if (data.sender_id === friendEmail) {
             const timestamp = data.created_at || new Date().toISOString();
             const msgObj = {
-                msgId: data.msgId,
+                msgId: String(data.msgId || data.id).trim(),
                 sender_id: data.sender_id,
                 receiver_id: myEmail,
                 message_text: data.message_text || "",
@@ -508,33 +554,60 @@
         }
     });
 
-    socket.on("message_edited", async (data) => {
-        const { msgId, new_text } = data;
-        await updateLocalEditedMessage(msgId, new_text);
+    const handleEditEvent = async (data) => {
+        const msgId = String(data.msgId || data.id).trim();
+        const new_text = data.new_text || data.message_text;
+        const media_payload = data.media_payload;
+
+        // Receiver/Live check: update local indexeddb with loop/cursor check
+        await updateLocalEditedMessage(msgId, new_text, media_payload);
 
         const msgRow = document.getElementById(`msg-${msgId}`);
         if (msgRow) {
             const textElement = msgRow.querySelector('.msg-text-content');
-            textElement.innerText = new_text;
+            if (textElement) {
+                textElement.innerText = new_text;
+                if (!msgRow.querySelector('.edited-tag')) {
+                    const editedSpan = document.createElement('span');
+                    editedSpan.className = 'edited-tag';
+                    editedSpan.innerText = '(edited)';
+                    textElement.appendChild(editedSpan);
+                }
+            }
 
-            if (!msgRow.querySelector('.edited-tag')) {
-                const editedSpan = document.createElement('span');
-                editedSpan.className = 'edited-tag';
-                editedSpan.innerText = '(edited)';
-                textElement.appendChild(editedSpan);
+            let mediaContainer = msgRow.querySelector('.msg-media');
+            if (media_payload) {
+                const media = typeof media_payload === 'string' ? JSON.parse(media_payload) : media_payload;
+                if (mediaContainer) {
+                    mediaContainer.src = media.url;
+                } else {
+                    const bubble = msgRow.querySelector('.message');
+                    const newMediaHTML = media.type === 'video' ? `<video src="${media.url}" class="msg-media" controls></video>` : `<img src="${media.url}" class="msg-media" alt="Media">`;
+                    bubble.insertAdjacentHTML('afterbegin', newMediaHTML);
+                }
+            } else if (mediaContainer) {
+                mediaContainer.remove();
             }
         }
-    });
+    };
 
-    socket.on("message_deleted", async (data) => {
-        const { msgId } = data;
-        await deleteLocalMessage(msgId);
-        
-        const msgRow = document.getElementById(`msg-${msgId}`);
-        if (msgRow) msgRow.remove();
-    });
+    socket.on("message_edited", handleEditEvent);
+    socket.on("edit_message", handleEditEvent);
 
-    // Close Dropdowns on Click Outside
+    const handleDeleteEvent = async (data) => {
+        const msgId = String(data.msgId || data.id).trim();
+        try {
+            await deleteLocalMessageByCursor(msgId);
+            const msgRow = document.getElementById(`msg-${msgId}`);
+            if (msgRow) msgRow.remove();
+        } catch(e) {
+            console.error("Socket delete handle error:", e);
+        }
+    };
+
+    socket.on("message_deleted", handleDeleteEvent);
+    socket.on("delete_message", handleDeleteEvent);
+
     document.addEventListener('click', (e) => {
         if (!e.target.closest('.msg-dropdown')) {
             document.querySelectorAll('.msg-dropdown').forEach(d => d.classList.remove('show'));
@@ -554,15 +627,15 @@
     }
 
     /* =========================================================
-       INDEXEDDB LOCAL DATABASE
+       INDEXEDDB LOCAL DATABASE & CURSOR OPERATIONS
        ========================================================= */
     function openChatDB() {
         return new Promise((resolve, reject) => {
-            const request = indexedDB.open("NexTalkLocalDB", 5);
+            const request = indexedDB.open("NexTalkLocalDB", 6);
             request.onupgradeneeded = (event) => {
                 const db = event.target.result;
                 if (!db.objectStoreNames.contains("chats")) {
-                    db.createObjectStore("chats", { keyPath: "msgId" });
+                    db.createObjectStore("chats", { keyPath: "id", autoIncrement: true });
                 }
             };
             request.onsuccess = (event) => resolve(event.target.result);
@@ -571,45 +644,110 @@
     }
 
     async function saveLocalMessage(msgObj) {
+        msgObj.msgId = String(msgObj.msgId).trim();
         const db = await openChatDB();
-        const tx = db.transaction("chats", "readwrite");
-        tx.objectStore("chats").put(msgObj);
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction("chats", "readwrite");
+            const store = tx.objectStore("chats");
+            store.put(msgObj);
+            tx.oncomplete = () => resolve();
+            tx.onerror = (e) => reject(e.target.error);
+        });
     }
 
-    async function deleteLocalMessage(msgId) {
+    // Cursor based delete to handle arbitrary keyPaths matching msgId
+    async function deleteLocalMessageByCursor(msgId) {
         const db = await openChatDB();
-        const tx = db.transaction("chats", "readwrite");
-        tx.objectStore("chats").delete(msgId);
+        const targetId = String(msgId).trim();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction("chats", "readwrite");
+            const store = tx.objectStore("chats");
+            const request = store.openCursor();
+
+            request.onsuccess = (event) => {
+                const cursor = event.target.result;
+                if (cursor) {
+                    if (cursor.value.msgId && String(cursor.value.msgId).trim() === targetId) {
+                        cursor.delete();
+                    }
+                    cursor.continue();
+                } else {
+                    resolve();
+                }
+            };
+            request.onerror = (e) => reject(e.target.error);
+        });
     }
 
-    async function updateLocalEditedMessage(msgId, newText) {
+    // Cursor based update for edited messages
+    async function updateLocalEditedMessage(msgId, newText, newMedia = undefined) {
         const db = await openChatDB();
-        const tx = db.transaction("chats", "readwrite");
-        const store = tx.objectStore("chats");
-        const req = store.get(msgId);
-        req.onsuccess = () => {
-            const data = req.result;
-            if (data) {
-                if (!data.original_text) data.original_text = data.message_text;
-                data.message_text = newText;
-                data.is_edited = true;
-                store.put(data);
-            }
-        };
+        const targetId = String(msgId).trim();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction("chats", "readwrite");
+            const store = tx.objectStore("chats");
+            const request = store.openCursor();
+            let found = false;
+
+            request.onsuccess = (event) => {
+                const cursor = event.target.result;
+                if (cursor) {
+                    if (cursor.value.msgId && String(cursor.value.msgId).trim() === targetId) {
+                        found = true;
+                        const data = cursor.value;
+                        if (!data.original_text) data.original_text = data.message_text;
+                        data.message_text = newText;
+                        if (newMedia !== undefined) data.media_payload = newMedia;
+                        data.is_edited = true;
+                        data.status = 'sent';
+                        cursor.update(data);
+                    }
+                    cursor.continue();
+                } else {
+                    if (!found) {
+                        store.put({
+                            msgId: targetId,
+                            sender_id: friendEmail,
+                            receiver_id: myEmail,
+                            message_text: newText,
+                            original_text: newText,
+                            media_payload: newMedia,
+                            created_at: new Date().toISOString(),
+                            status: 'sent',
+                            is_edited: true,
+                            is_deleted: false
+                        });
+                    }
+                    resolve();
+                }
+            };
+            request.onerror = (e) => reject(e.target.error);
+        });
     }
 
     async function updateLocalMessageStatus(msgId, status) {
         const db = await openChatDB();
-        const tx = db.transaction("chats", "readwrite");
-        const store = tx.objectStore("chats");
-        const req = store.get(msgId);
-        req.onsuccess = () => {
-            const data = req.result;
-            if (data) {
-                data.status = status;
-                store.put(data);
-            }
-        };
+        const targetId = String(msgId).trim();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction("chats", "readwrite");
+            const store = tx.objectStore("chats");
+            const request = store.openCursor();
+
+            request.onsuccess = (event) => {
+                const cursor = event.target.result;
+                if (cursor) {
+                    if (cursor.value.msgId && String(cursor.value.msgId).trim() === targetId) {
+                        const data = cursor.value;
+                        data.status = status;
+                        cursor.update(data);
+                    }
+                    cursor.continue();
+                } else {
+                    resolve();
+                }
+            };
+            request.onerror = (e) => reject(e.target.error);
+        });
     }
 
     async function getLocalMessages(friend) {
@@ -621,8 +759,12 @@
                 const all = req.result || [];
                 const filtered = all.filter(
                     m => ((m.sender_id === myEmail && m.receiver_id === friend) ||
-                         (m.sender_id === friend && m.receiver_id === myEmail)) && !m.is_deleted
-                );
+                         (m.sender_id === friend && m.receiver_id === myEmail)) && 
+                         !m.is_deleted && m.status !== 'deleted'
+                ).map(m => {
+                    if (m.status === 'sending') m.status = 'sent';
+                    return m;
+                });
                 resolve(filtered);
             };
             req.onerror = (e) => reject(e.target.error);
@@ -682,13 +824,12 @@
     }
 
     /* =========================================================
-       PAGE LOAD & FRIEND's SYNC PROCESS
+       PAGE LOAD & SERVER SYNC (RECEIVER & SENDER SYNC)
        ========================================================= */
     async function loadAndSyncMessages() {
         if (!myEmail || !friendEmail) return;
 
-        // Step 1: Render Local Messages
-        const localMsgs = await getLocalMessages(friendEmail);
+        let localMsgs = await getLocalMessages(friendEmail);
         const chatContainer = document.getElementById('chat-messages');
         chatContainer.innerHTML = '';
 
@@ -697,52 +838,65 @@
         } else {
             localMsgs.forEach(msg => {
                 const isSent = (msg.sender_id === myEmail);
-                if (msg.status === 'sending') msg.status = 'sent'; 
                 appendMessageUI(msg, isSent);
             });
         }
         chatContainer.scrollTop = chatContainer.scrollHeight;
 
-        // Step 2: Fetch Drafts/Sync Items from Server on Load
         try {
             const res = await fetch(`${BRIDGE_SERVER}/drafts/${encodeURIComponent(myEmail)}`);
             if (res.ok) {
                 const serverData = await res.json();
-                const pendingMsgs = serverData.data || [];
-                const friendPending = pendingMsgs.filter(m => m.sender_id === friendEmail);
+                const pendingMsgs = serverData.data || serverData || [];
+                
+                if (Array.isArray(pendingMsgs)) {
+                    for (let msg of pendingMsgs) {
+                        const targetId = String(msg.msgId || msg.id).trim();
 
-                for (let msg of friendPending) {
-                    if (msg.is_deleted) {
-                        await deleteLocalMessage(msg.msgId || msg.id);
-                        const row = document.getElementById(`msg-${msg.msgId || msg.id}`);
-                        if (row) row.remove();
-                        continue;
-                    }
-
-                    const msgObj = {
-                        msgId: msg.msgId || msg.id || 'msg_' + Date.now(),
-                        sender_id: msg.sender_id,
-                        receiver_id: msg.receiver_id,
-                        message_text: msg.message_text,
-                        original_text: msg.original_text || msg.message_text,
-                        media_payload: msg.media_payload,
-                        created_at: msg.created_at,
-                        status: 'sent',
-                        is_edited: msg.is_edited || false,
-                        is_deleted: false
-                    };
-
-                    await saveLocalMessage(msgObj);
-
-                    const existingRow = document.getElementById(`msg-${msgObj.msgId}`);
-                    if (existingRow) {
-                        const txtEl = existingRow.querySelector('.msg-text-content');
-                        txtEl.innerText = msgObj.message_text;
-                        if (msgObj.is_edited && !existingRow.querySelector('.edited-tag')) {
-                            txtEl.innerHTML += `<span class="edited-tag">(edited)</span>`;
+                        // 4/ Receiver/Sync: check is_deleted
+                        if (msg.is_deleted || msg.status === 'deleted') {
+                            await deleteLocalMessageByCursor(targetId);
+                            const row = document.getElementById(`msg-${targetId}`);
+                            if (row) row.remove();
+                            continue;
                         }
-                    } else {
-                        appendMessageUI(msgObj, false);
+
+                        // 2/ Receiver/Sync: check is_edited & text matching in index db
+                        if (msg.is_edited) {
+                            await updateLocalEditedMessage(targetId, msg.message_text, msg.media_payload);
+                        }
+
+                        if ((msg.sender_id === friendEmail && msg.receiver_id === myEmail) || 
+                            (msg.sender_id === myEmail && msg.receiver_id === friendEmail)) {
+                            
+                            const msgObj = {
+                                msgId: targetId,
+                                sender_id: msg.sender_id,
+                                receiver_id: msg.receiver_id,
+                                message_text: msg.message_text,
+                                original_text: msg.original_text || msg.message_text,
+                                media_payload: msg.media_payload,
+                                created_at: msg.created_at,
+                                status: 'sent',
+                                is_edited: msg.is_edited || false,
+                                is_deleted: false
+                            };
+
+                            await saveLocalMessage(msgObj);
+
+                            const existingRow = document.getElementById(`msg-${targetId}`);
+                            if (existingRow) {
+                                const txtEl = existingRow.querySelector('.msg-text-content');
+                                if (txtEl) {
+                                    txtEl.innerText = msgObj.message_text;
+                                    if (msgObj.is_edited && !existingRow.querySelector('.edited-tag')) {
+                                        txtEl.innerHTML += `<span class="edited-tag">(edited)</span>`;
+                                    }
+                                }
+                            } else if (msg.sender_id === friendEmail) {
+                                appendMessageUI(msgObj, false);
+                            }
+                        }
                     }
                 }
             }
@@ -754,7 +908,7 @@
     }
 
     /* =========================================================
-       RENDER MESSAGE WITH LONG PRESS HANDLER
+       RENDER MESSAGE
        ========================================================= */
     function appendMessageUI(msgObj, isSent) {
         const chatMessages = document.getElementById('chat-messages');
@@ -773,9 +927,9 @@
             if (msgObj.status === 'sending') {
                 statusIconHTML = `<span class="msg-status"><i class="fa-solid fa-spinner"></i></span>`;
             } else if (msgObj.status === 'sent') {
-                statusIconHTML = `<span class="msg-status"><i class="fa-solid fa-check"></i></span>`;
-            } else {
-                statusIconHTML = `<span class="msg-status"><i class="fa-solid fa-circle-exclamation"></i></span>`;
+                statusIconHTML = `<span class="msg-status"><i class="fa-solid fa-check-double"></i></span>`;
+            } else if (msgObj.status === 'failed') {
+                statusIconHTML = `<span class="msg-status" title="Error!"><i class="fa-solid fa-circle-exclamation"></i></span>`;
             }
         }
 
@@ -789,22 +943,30 @@
             }
         }
 
-        // DROPDOWN MENU
-        const dropdownHTML = `
-            <div class="msg-dropdown" id="dropdown-${msgObj.msgId}">
-                <div class="dropdown-item" onclick="copyMessage('${msgObj.msgId}')">
-                    <i class="fa-regular fa-copy"></i> Copy
-                </div>
-                ${isSent ? `
+        let dropdownHTML = '';
+        if (isSent) {
+            dropdownHTML = `
+                <div class="msg-dropdown" id="dropdown-${msgObj.msgId}">
+                    <div class="dropdown-item" onclick="copyMessage('${msgObj.msgId}')">
+                        <i class="fa-regular fa-copy"></i> Copy
+                    </div>
                     <div class="dropdown-item" onclick="startEditMessage('${msgObj.msgId}')">
                         <i class="fa-solid fa-pen"></i> Edit
                     </div>
                     <div class="dropdown-item delete-item" onclick="deleteMessage('${msgObj.msgId}')">
                         <i class="fa-solid fa-trash"></i> Delete
                     </div>
-                ` : ''}
-            </div>
-        `;
+                </div>
+            `;
+        } else {
+            dropdownHTML = `
+                <div class="msg-dropdown" id="dropdown-${msgObj.msgId}">
+                    <div class="dropdown-item" onclick="copyMessage('${msgObj.msgId}')">
+                        <i class="fa-regular fa-copy"></i> Copy
+                    </div>
+                </div>
+            `;
+        }
 
         const editedTag = msgObj.is_edited ? `<span class="edited-tag">(edited)</span>` : '';
 
@@ -824,14 +986,10 @@
         chatMessages.appendChild(messageRow);
         chatMessages.scrollTop = chatMessages.scrollHeight;
 
-        // Attach Long Press & Right Click events on message bubble
         const msgBubble = document.getElementById(`msg-bubble-${msgObj.msgId}`);
         attachLongPressListener(msgBubble, msgObj.msgId);
     }
 
-    /* =========================================================
-       LONG PRESS & RIGHT CLICK LISTENER FUNCTION
-       ========================================================= */
     function attachLongPressListener(element, msgId) {
         let pressTimer = null;
 
@@ -863,17 +1021,54 @@
         });
     }
 
-    /* =========================================================
-       COPY, EDIT & DELETE ACTIONS
-       ========================================================= */
+    async function updateMessageStatusUI(msgId, status) {
+        await updateMessageStatus(msgId, status);
+        
+        const msgRow = document.getElementById(`msg-${msgId}`);
+        if (!msgRow) return;
+
+        const statusContainer = msgRow.querySelector('.msg-status');
+        if (statusContainer) {
+            if (status === 'sending') {
+                statusContainer.innerHTML = `<i class="fa-solid fa-spinner"></i>`;
+            } else if (status === 'sent') {
+                statusContainer.innerHTML = `<i class="fa-solid fa-check-double"></i>`;
+            } else if (status === 'failed') {
+                statusContainer.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i>`;
+            }
+        }
+    }
+
+    async function updateMessageStatus(msgId, status) {
+        const db = await openChatDB();
+        const targetId = String(msgId).trim();
+        return new Promise((resolve) => {
+            const tx = db.transaction("chats", "readwrite");
+            const store = tx.objectStore("chats");
+            const req = store.openCursor();
+            req.onsuccess = (event) => {
+                const cursor = event.target.result;
+                if (cursor) {
+                    if (cursor.value.msgId && String(cursor.value.msgId).trim() === targetId) {
+                        const data = cursor.value;
+                        data.status = status;
+                        cursor.update(data);
+                    }
+                    cursor.continue();
+                } else {
+                    resolve();
+                }
+            };
+            req.onerror = () => resolve();
+        });
+    }
+
     function copyMessage(msgId) {
         document.querySelectorAll('.msg-dropdown').forEach(d => d.classList.remove('show'));
         const msgRow = document.getElementById(`msg-${msgId}`);
         if (!msgRow) return;
         const text = msgRow.querySelector('.msg-text-content').innerText.replace('(edited)', '').trim();
-        navigator.clipboard.writeText(text).then(() => {
-            alert("Message copied!");
-        });
+        navigator.clipboard.writeText(text).then(() => {});
     }
 
     function startEditMessage(msgId) {
@@ -893,63 +1088,80 @@
         editingMsgId = null;
         document.getElementById('message-input').value = '';
         document.getElementById('edit-indicator').style.display = 'none';
+        clearSelectedMedia();
     }
 
+    /* =========================================================
+       DELETE MESSAGE (SENDER FLOW WITH INDEXEDDB LOOP & ONCOMPLETE)
+       ========================================================= */
     async function deleteMessage(msgId) {
         document.querySelectorAll('.msg-dropdown').forEach(d => d.classList.remove('show'));
+        const targetId = String(msgId).trim();
         
-        if (confirm("Delete this message for everyone?")) {
-            // ১. আগে Status Icon-এ Loader Spinner দেখাবে
-            await updateMessageStatusUI(msgId, 'sending');
+        if (!confirm("Delete this message for everyone?")) return;
 
-            // ২. সকেটে পাঠাবে
-            if (socket && socket.connected) {
-                socket.emit("delete_message", { msgId: msgId, receiver_id: friendEmail });
+        showActionLoader();
+
+        try {
+            // ১. সার্ভারে রিকোয়েস্ট পাঠানো
+            const response = await fetch(`${BRIDGE_SERVER}/drafts`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    msgId: targetId,
+                    sender_id: myEmail,
+                    receiver_id: friendEmail,
+                    is_deleted: true
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error("Server delete request failed");
             }
 
-            // ৩. ব্যাকএন্ডে সার্ভারে ডিলিট আপডেট রিকোয়েস্ট
-            try {
-                await fetch(`${BRIDGE_SERVER}/drafts`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        msgId: msgId,
-                        sender_id: myEmail,
-                        receiver_id: friendEmail,
-                        is_deleted: true,
-                        status: 'deleted'
-                    })
-                });
-            } catch (err) {
-                console.error("Delete draft error:", err);
-            }
+            // ২ & ৩. oncomplete এর মাধ্যমে IndexedDB তে লুপ চালিয়ে ডিলিট করা
+            const db = await openChatDB();
+            await new Promise((resolve, reject) => {
+                const tx = db.transaction("chats", "readwrite");
+                const store = tx.objectStore("chats");
+                const request = store.openCursor();
 
-            // ৪. কাজ শেষ হলে লোকাল DB ও DOM থেকে রিমুভ
-            await deleteLocalMessage(msgId);
-            const msgRow = document.getElementById(`msg-${msgId}`);
+                request.onsuccess = (event) => {
+                    const cursor = event.target.result;
+                    if (cursor) {
+                        if (cursor.value.msgId && String(cursor.value.msgId).trim() === targetId) {
+                            cursor.delete();
+                        }
+                        cursor.continue();
+                    }
+                };
+
+                tx.oncomplete = () => resolve();
+                tx.onerror = (e) => reject(e.target.error);
+            });
+
+            // UI থেকে রিমুভ করা
+            const msgRow = document.getElementById(`msg-${targetId}`);
             if (msgRow) msgRow.remove();
-        }
-    }
 
-    async function updateMessageStatusUI(msgId, status) {
-        await updateLocalMessageStatus(msgId, status);
-        const msgRow = document.getElementById(`msg-${msgId}`);
-        if (!msgRow) return;
-
-        const statusContainer = msgRow.querySelector('.msg-status');
-        if (statusContainer) {
-            if (status === 'sending') {
-                statusContainer.innerHTML = `<i class="fa-solid fa-spinner"></i>`;
-            } else if (status === 'sent') {
-                statusContainer.innerHTML = `<i class="fa-solid fa-check"></i>`;
-            } else if (status === 'failed') {
-                statusContainer.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i>`;
+            if (socket && socket.connected) {
+                socket.emit("delete_message", { msgId: targetId, receiver_id: friendEmail });
+                socket.emit("message_deleted", { msgId: targetId, receiver_id: friendEmail });
             }
+
+            // ৪. সাকসেস অ্যালার্ট
+            alert("Message deleted successfully");
+
+        } catch (err) {
+            console.error("Delete operation failed:", err);
+            alert("Failed to delete message. Please try again.");
+        } finally {
+            hideActionLoader();
         }
     }
 
     /* =========================================================
-       SEND & EDIT MESSAGE PROCESS
+       SEND & EDIT MESSAGE (SENDER FLOW WITH INDEXEDDB LOOP & ONCOMPLETE)
        ========================================================= */
     async function sendMessage() {
         const input = document.getElementById('message-input');
@@ -957,37 +1169,22 @@
 
         if ((!text && !selectedMedia) || !myEmail || !friendEmail) return;
 
-        // EDIT ACTION
+        // ================= EDIT MESSAGE FLOW =================
         if (editingMsgId) {
-            const currentEditId = editingMsgId;
-            cancelEdit(); // ইনপুট বার বন্ধ করুন
+            const currentEditId = String(editingMsgId).trim();
+            const mediaToSend = selectedMedia;
+            const originalText = text;
+            
+            cancelEdit(); 
 
+            showActionLoader();
             const msgRow = document.getElementById(`msg-${currentEditId}`);
             if (msgRow) {
-                const textElement = msgRow.querySelector('.msg-text-content');
-                textElement.innerText = text;
-                if (!msgRow.querySelector('.edited-tag')) {
-                    const editedSpan = document.createElement('span');
-                    editedSpan.className = 'edited-tag';
-                    editedSpan.innerText = '(edited)';
-                    textElement.appendChild(editedSpan);
-                }
+                msgRow.querySelector('.message').classList.add('action-in-progress');
             }
 
-            // ১. এডিট এর লোডার চালু করুন
-            await updateMessageStatusUI(currentEditId, 'sending');
-
-            // ২. সকেটে সেন্ড করুন
-            if (socket && socket.connected) {
-                socket.emit("edit_message", {
-                    msgId: currentEditId,
-                    receiver_id: friendEmail,
-                    new_text: text
-                });
-            }
-
-            // ৩. সার্ভার/ড্রাফট আপডেট
             try {
+                // ১. সার্ভারে রিকোয়েস্ট পাঠানো
                 const response = await fetch(`${BRIDGE_SERVER}/drafts`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -995,32 +1192,107 @@
                         msgId: currentEditId,
                         sender_id: myEmail,
                         receiver_id: friendEmail,
-                        message_text: text,
-                        is_edited: true,
-                        status: 'edited'
+                        message_text: originalText,
+                        media_payload: mediaToSend,
+                        is_edited: true
                     })
                 });
 
-                await updateLocalEditedMessage(currentEditId, text);
-                
-                if (response.ok || (socket && socket.connected)) {
-                    await updateMessageStatusUI(currentEditId, 'sent');
-                } else {
-                    await updateMessageStatusUI(currentEditId, 'failed');
+                if (!response.ok) {
+                    throw new Error('Server edit failed');
                 }
-            } catch (e) {
-                await updateLocalEditedMessage(currentEditId, text);
+
+                // ২ & ৩. oncomplete এর মাধ্যমে IndexedDB তে লুপ চালিয়ে এডিট করা
+                const db = await openChatDB();
+                await new Promise((resolve, reject) => {
+                    const tx = db.transaction("chats", "readwrite");
+                    const store = tx.objectStore("chats");
+                    const request = store.openCursor();
+
+                    request.onsuccess = (event) => {
+                        const cursor = event.target.result;
+                        if (cursor) {
+                            if (cursor.value.msgId && String(cursor.value.msgId).trim() === currentEditId) {
+                                const data = cursor.value;
+                                if (!data.original_text) data.original_text = data.message_text;
+                                data.message_text = originalText;
+                                if (mediaToSend !== undefined) data.media_payload = mediaToSend;
+                                data.is_edited = true;
+                                data.status = 'sent';
+                                cursor.update(data);
+                            }
+                            cursor.continue();
+                        }
+                    };
+
+                    tx.oncomplete = () => resolve();
+                    tx.onerror = (e) => reject(e.target.error);
+                });
+                
+                // UI আপডেট
+                if (msgRow) {
+                    const textElement = msgRow.querySelector('.msg-text-content');
+                    if (textElement) {
+                        textElement.innerText = originalText;
+                        if (!msgRow.querySelector('.edited-tag')) {
+                            textElement.innerHTML += `<span class="edited-tag">(edited)</span>`;
+                        }
+                    }
+
+                    if (mediaToSend) {
+                        let mediaContainer = msgRow.querySelector('.msg-media');
+                        if (mediaContainer) {
+                            mediaContainer.src = mediaToSend.url;
+                        } else {
+                            const bubble = msgRow.querySelector('.message');
+                            const newMediaHTML = mediaToSend.type === 'video' ? 
+                                `<video src="${mediaToSend.url}" class="msg-media" controls></video>` : 
+                                `<img src="${mediaToSend.url}" class="msg-media" alt="Media">`;
+                            bubble.insertAdjacentHTML('afterbegin', newMediaHTML);
+                        }
+                    }
+                }
+
                 if (socket && socket.connected) {
-                    await updateMessageStatusUI(currentEditId, 'sent');
-                } else {
-                    await updateMessageStatusUI(currentEditId, 'failed');
+                    socket.emit("edit_message", {
+                        msgId: currentEditId,
+                        receiver_id: friendEmail,
+                        new_text: originalText,
+                        media_payload: mediaToSend
+                    });
+                    socket.emit("message_edited", {
+                        msgId: currentEditId,
+                        receiver_id: friendEmail,
+                        new_text: originalText,
+                        media_payload: mediaToSend
+                    });
+                }
+
+                // ৪. সাকসেস অ্যালার্ট
+                alert("Message edited successfully");
+
+            } catch (e) {
+                console.error("❌ Edit failed:", e);
+                alert("Failed to edit message. Please try again.");
+                
+                editingMsgId = currentEditId;
+                document.getElementById('message-input').value = originalText;
+                document.getElementById('edit-indicator').style.display = 'flex';
+                
+                if (msgRow) {
+                    msgRow.querySelector('.message').classList.remove('action-in-progress');
+                }
+            } finally {
+                hideActionLoader();
+                if (msgRow) {
+                    msgRow.querySelector('.message').classList.remove('action-in-progress');
                 }
             }
 
             return;
         }
 
-        // NEW MESSAGE ACTION
+        // ================= NEW MESSAGE FLOW =================
         const timestamp = new Date().toISOString();
         const tempMsgId = 'msg_' + Date.now();
 
@@ -1043,34 +1315,25 @@
         input.value = '';
         clearSelectedMedia();
 
-        let isSocketSent = false;
-
         if (socket && socket.connected) {
-            try {
-                socket.emit("send_message", localMsgObj);
-                isSocketSent = true;
-                await updateMessageStatusUI(tempMsgId, 'sent');
-            } catch (err) {
-                console.error("Socket error:", err);
-            }
+            socket.emit("send_message", localMsgObj);
         }
 
-        if (!isSocketSent) {
-            try {
-                const response = await fetch(`${BRIDGE_SERVER}/drafts`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ...localMsgObj, status: 'pending' })
-                });
+        try {
+            const response = await fetch(`${BRIDGE_SERVER}/drafts`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(localMsgObj)
+            });
 
-                if (response.ok) {
-                    await updateMessageStatusUI(tempMsgId, 'sent');
-                } else {
-                    await updateMessageStatusUI(tempMsgId, 'failed');
-                }
-            } catch (err) {
+            if (response.ok) {
+                await updateMessageStatusUI(tempMsgId, 'sent');
+            } else {
                 await updateMessageStatusUI(tempMsgId, 'failed');
             }
+        } catch (err) {
+            console.error("API Error:", err);
+            await updateMessageStatusUI(tempMsgId, 'failed');
         }
     }
 
