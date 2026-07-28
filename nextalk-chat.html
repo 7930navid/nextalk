@@ -230,7 +230,7 @@
             word-wrap: break-word;
             position: relative;
             cursor: pointer;
-            user-select: none; /* Long press easy korar jonno */
+            user-select: none;
             transition: transform 0.1s ease;
         }
 
@@ -258,7 +258,7 @@
             border-bottom-right-radius: 4px;
         }
 
-        /* ================= LONG PRESS DROPDOWN MENU STYLES ================= */
+        /* LONG PRESS DROPDOWN MENU STYLES */
         .msg-dropdown {
             display: none;
             position: absolute;
@@ -789,7 +789,7 @@
             }
         }
 
-        // --- DROPDOWN MENU ---
+        // DROPDOWN MENU
         const dropdownHTML = `
             <div class="msg-dropdown" id="dropdown-${msgObj.msgId}">
                 <div class="dropdown-item" onclick="copyMessage('${msgObj.msgId}')">
@@ -839,7 +839,7 @@
             if (e.type === 'click' && e.button !== 0) return;
             pressTimer = setTimeout(() => {
                 showDropdown(msgId);
-            }, 500); // 500ms (0.5 second) hold opens dropdown
+            }, 500);
         };
 
         const cancelPress = () => {
@@ -849,17 +849,14 @@
             }
         };
 
-        // Touch events (Mobile)
         element.addEventListener('touchstart', startPress, { passive: true });
         element.addEventListener('touchend', cancelPress);
         element.addEventListener('touchmove', cancelPress);
 
-        // Mouse events (Desktop)
         element.addEventListener('mousedown', startPress);
         element.addEventListener('mouseup', cancelPress);
         element.addEventListener('mouseleave', cancelPress);
 
-        // Right Click Event for Desktop Users
         element.addEventListener('contextmenu', (e) => {
             e.preventDefault();
             showDropdown(msgId);
@@ -902,14 +899,15 @@
         document.querySelectorAll('.msg-dropdown').forEach(d => d.classList.remove('show'));
         
         if (confirm("Delete this message for everyone?")) {
-            await deleteLocalMessage(msgId);
-            const msgRow = document.getElementById(`msg-${msgId}`);
-            if (msgRow) msgRow.remove();
+            // ১. আগে Status Icon-এ Loader Spinner দেখাবে
+            await updateMessageStatusUI(msgId, 'sending');
 
+            // ২. সকেটে পাঠাবে
             if (socket && socket.connected) {
                 socket.emit("delete_message", { msgId: msgId, receiver_id: friendEmail });
             }
 
+            // ৩. ব্যাকএন্ডে সার্ভারে ডিলিট আপডেট রিকোয়েস্ট
             try {
                 await fetch(`${BRIDGE_SERVER}/drafts`, {
                     method: 'POST',
@@ -925,6 +923,11 @@
             } catch (err) {
                 console.error("Delete draft error:", err);
             }
+
+            // ৪. কাজ শেষ হলে লোকাল DB ও DOM থেকে রিমুভ
+            await deleteLocalMessage(msgId);
+            const msgRow = document.getElementById(`msg-${msgId}`);
+            if (msgRow) msgRow.remove();
         }
     }
 
@@ -935,7 +938,13 @@
 
         const statusContainer = msgRow.querySelector('.msg-status');
         if (statusContainer) {
-            statusContainer.innerHTML = status === 'sent' ? `<i class="fa-solid fa-check"></i>` : `<i class="fa-solid fa-circle-exclamation"></i>`;
+            if (status === 'sending') {
+                statusContainer.innerHTML = `<i class="fa-solid fa-spinner"></i>`;
+            } else if (status === 'sent') {
+                statusContainer.innerHTML = `<i class="fa-solid fa-check"></i>`;
+            } else if (status === 'failed') {
+                statusContainer.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i>`;
+            }
         }
     }
 
@@ -951,9 +960,8 @@
         // EDIT ACTION
         if (editingMsgId) {
             const currentEditId = editingMsgId;
-            
-            await updateLocalEditedMessage(currentEditId, text);
-            
+            cancelEdit(); // ইনপুট বার বন্ধ করুন
+
             const msgRow = document.getElementById(`msg-${currentEditId}`);
             if (msgRow) {
                 const textElement = msgRow.querySelector('.msg-text-content');
@@ -966,6 +974,10 @@
                 }
             }
 
+            // ১. এডিট এর লোডার চালু করুন
+            await updateMessageStatusUI(currentEditId, 'sending');
+
+            // ২. সকেটে সেন্ড করুন
             if (socket && socket.connected) {
                 socket.emit("edit_message", {
                     msgId: currentEditId,
@@ -974,8 +986,9 @@
                 });
             }
 
+            // ৩. সার্ভার/ড্রাফট আপডেট
             try {
-                await fetch(`${BRIDGE_SERVER}/drafts`, {
+                const response = await fetch(`${BRIDGE_SERVER}/drafts`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -987,9 +1000,23 @@
                         status: 'edited'
                     })
                 });
-            } catch (e) {}
 
-            cancelEdit();
+                await updateLocalEditedMessage(currentEditId, text);
+                
+                if (response.ok || (socket && socket.connected)) {
+                    await updateMessageStatusUI(currentEditId, 'sent');
+                } else {
+                    await updateMessageStatusUI(currentEditId, 'failed');
+                }
+            } catch (e) {
+                await updateLocalEditedMessage(currentEditId, text);
+                if (socket && socket.connected) {
+                    await updateMessageStatusUI(currentEditId, 'sent');
+                } else {
+                    await updateMessageStatusUI(currentEditId, 'failed');
+                }
+            }
+
             return;
         }
 
@@ -1057,8 +1084,6 @@
         await loadFriendProfile();
         await loadAndSyncMessages();
     });
-    
-    
   </script>
 
 </body>
