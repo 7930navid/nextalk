@@ -509,11 +509,33 @@
             border: 1px solid var(--border-color);
             cursor: pointer;
             position: relative;
-            background: #000;
+            background: white;
             box-shadow: 0 4px 10px rgba(0,0,0,0.08);
             flex-shrink: 0;
+            animation: slide 0.2s ease-in;
         }
-
+        @keyframes slide {
+            from {transform: translateX(100%);}
+            to {transform: translateX(0);}
+        }
+        .ball-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+       }
+        .spinner-loading-ball {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            border-top: 2px solid green;
+            animation: spin 2s linear infinite;
+        }
+        @keyframes spin {
+            to{transform: rotate(360deg);}
+        }
         .story-thumb-video {
             width: 100%;
             height: 100%;
@@ -555,6 +577,15 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            animation: desktop 0.5s ease-in;
+        }
+        @keyframes desktop {
+            from {
+                transform: translateY(70%) scale(0.4);
+            }
+            to {
+                transform: translateY(0%) scale(1);
+            }
         }
 
         .story-modal-box {
@@ -674,6 +705,22 @@
             transition: transform 0.35s cubic-bezier(0.1, 0.9, 0.2, 1);
             box-shadow: 0 -10px 30px rgba(0,0,0,0.15);
         }
+#editbtn {
+    position: absolute;
+    z-index: 100;
+    bottom: 10px;
+    left: 74%;
+}
+#editbtn button{
+    border: none;
+    height: 24px;
+    width: 24px;
+    border-radius: 90px;
+    box-shadow: 2px 2px 3px rgba(0,0,0,0.1);
+    font-size: 20px;
+    background: white;
+}
+
     </style>
 </head>
 <body>
@@ -706,7 +753,13 @@
                             <div class="add-btn"><i class="fa-solid fa-plus"></i></div>
                             <span class="add-story-text">Add Story</span>
                        </div>
-                       <div id="stryContainer" style="display: flex; gap: 10px;"></div>
+                       <div id="stryContainer" style="display: flex; gap: 10px;">
+            <div class="story-thumb-btn">
+     <div class="ball-container">
+      <div class="spinner-loading-ball"></div>
+     </div>
+            </div>
+                       </div>
                     </div>
                 </div>
 
@@ -738,8 +791,12 @@
                 <div class="profile-card">
                     <div class="cover-photo" id="profileCover"></div>
                     <div class="profile-avatar-wrapper">
-                        <img src="https://i.ibb.co.com/Lh01SvdR/FB-IMG-1784721801953.jpg" id="profileAvatar" class="profile-avatar-img" alt="Profile Picture">
-                    </div>
+         <div style="position: relative; width: fit-content;">
+  <div id="editbtn"><a href="profileEdit.html">
+  <button><img src="https://i.ibb.co.com/HfyLkxKy/edit.png" alt="" border="0" width="15"></button>
+  </a></div>
+                    <img src="https://i.ibb.co.com/Lh01SvdR/FB-IMG-1784721801953.jpg" id="profileAvatar" class="profile-avatar-img" alt="Profile Picture">
+                    </div></div>
                     <h2 class="profile-name" id="profileName">User Name</h2>
                     <p class="profile-email" id="profileEmail">user@email.com</p>
                     <p class="profile-bio" id="profileBio">No bio added yet.</p>
@@ -760,14 +817,6 @@
             </div>
         </div>
 
-        <!-- ==================== 4. NOTIFICATIONS PAGE ==================== -->
-        <div id="page-notifications" class="page-view">
-            <div style="padding: 40px 20px; text-align: center;">
-                <i class="fa-solid fa-bell" style="font-size: 40px; color: var(--primary-color); margin-bottom: 15px;"></i>
-                <h3>Notifications</h3>
-                <p style="color: var(--text-sub); margin-top: 8px; font-size: 14px;">No new notifications</p>
-            </div>
-        </div>
 
         <!-- ==================== BOTTOM NAVIGATION FOOTER ==================== -->
         <nav class="bottom-nav">
@@ -783,7 +832,7 @@
                 <i class="fa-solid fa-gear"></i>
                 <span>Settings</span>
             </button>
-            <button class="nav-item" onclick="switchMainPage('notifications', this)">
+            <button class="nav-item" onclick="window.location.assign('https://7930navid.github.io/asirnet/notification.html')">
                 <i class="fa-solid fa-bell"></i>
                 <span>Notifications</span>
             </button>
