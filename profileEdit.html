@@ -1217,7 +1217,7 @@ async function(){
     showLoader(
         "Updating profile..."
     );
-
+    let email = user.email;
     try{
 
         const response =
@@ -1235,6 +1235,7 @@ async function(){
                 },
 
                 body:JSON.stringify({
+                    email,
 
                     username,
                     bio,
@@ -1266,11 +1267,21 @@ async function(){
 
         }
 
-        // Update local storage user data
-        localStorage.setItem(
-            "user",
-            JSON.stringify(data)
-        );
+const existingUser = JSON.parse(localStorage.getItem("user")) || {};
+
+const updatedUser = {
+    ...existingUser,
+    username: username,
+    bio: bio,
+    avatar: selectedAvatar,
+    cover_photo: selectedTheme
+};
+
+localStorage.setItem(
+    "userNex",
+    JSON.stringify(updatedUser)
+);
+
 
         this.innerHTML =
         "Updated ✅";
